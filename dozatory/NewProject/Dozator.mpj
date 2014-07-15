@@ -1,0 +1,21 @@
+#include <icpdas.h>
+
+void main(void)
+{
+	InitLib();
+	Print("Welcome to MiniOS7 Studio!");
+}
+[Project]
+ProjectName=Dozator.mpj
+Output=Dozator.exe
+UnitCount=2
+[Unit1]
+FileName=dozator.C
+Compile=1
+Link=1
+Filter=Source Files
+[Unit2]
+FileName=var.h
+Compile=0
+Link=0
+Filter=Header Files

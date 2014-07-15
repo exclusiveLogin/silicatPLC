@@ -1,0 +1,537 @@
+//Инициализация библиотек и переменных
+
+/*   TCP_Server.c: TCP Server  */
+#include <string.h>
+#include <stdio.h>
+#include <conio.h>
+#include <stdlib.h>
+#include <icpdas.h>                                
+#include "Tcpip32.h"
+#include "var.h"              
+#define MaxClentSocket 32
+#define NUM_OF_SERVICE_PORT 2
+fd_set rfds,s_fds;    // server socket set of socket file descriptors for reading
+unsigned       ActiveSkt[2]={0, 0};
+struct         timeval seltime={0,20};
+unsigned short service_port[NUM_OF_SERVICE_PORT]={10000, 502};
+int            socketPort[MaxClentSocket];
+unsigned int  count_cikl=0;
+int answer_to_modbus_tcp(char *bufer, int lenbuf);
+status[4]={0,0,0,0};//статус запросов 
+
+//Инициализация функций 
+/* ============== Расчёт контрольной суммы по алгоритму  CRC16 =====*/
+unsigned int CRC16(unsigned char *Data, unsigned int size)
+{
+ union
+  {
+   unsigned char  b[2];
+   unsigned short w   ;
+  } Sum;
+ unsigned char  shift_cnt;
+ unsigned char  *ptrByte;
+ unsigned long  byte_cnt = size;
+ ptrByte = Data;
+ Sum.w   = 0xffffU;
+ for (;byte_cnt>0;byte_cnt--)
+  {
+   Sum.w=(unsigned short)((Sum.w/256U)*256U+((Sum.w%256U)^(*ptrByte++)));
+   for (shift_cnt=0;shift_cnt<8;shift_cnt++)
+    {
+     if ((Sum.w&0x1)==1)
+      Sum.w=(unsigned short)((Sum.w>>1)^0xa001U);
+     else Sum.w>>=1;
+    }
+  }
+ return Sum.w;
+}
+//--------Первый запуск-------
+void  firstRunCheck(){//опрос дозаторов при первом запуске
+  switch (stack)
+   {
+	 case 0: curentPerfIzvest = getDozator(adrDoz1, 1, &status[0]);if (status[0]==0) stack++;break;
+	 case 1: calcPerfIzvest   = getDozator(adrDoz1, 2, &status[1]);if (status[1]==0) stack++;break;
+	 case 2: curentPerfSand   = getDozator(adrDoz2, 1, &status[2]);if (status[2]==0) stack++;break;
+	 case 3: calcPerfSand     = getDozator(adrDoz2, 2, &status[3]);if (status[3]==0) stack++;break;
+	}
+   if((status[0]==0)&&(status[1]==0)&&(status[2]==0)&&(status[3]==0))
+    {
+	 firststartdoz=0;
+	}
+   else
+    {
+	 firststartdoz = 1;
+	}
+}
+
+//------------Анализ состояния системы--------------------
+void checkSystem(){
+if (firststartdoz==0)
+{
+ switch(stack){
+ 	    case 0:curentPerfIzvest = getDozator(adrDoz1, 1, &status[0]);
+	   		   stack++;	 			   
+	    	   break;
+	    case 1:calcPerfIzvest = getDozator(adrDoz1, 2, &status[1]);
+	   		   stack++;
+		  	   break;
+	    case 2:curentPerfSand = getDozator(adrDoz2, 1, &status[2]);
+	      	   stack++;
+		  	   break;
+	    case 3:calcPerfSand = getDozator(adrDoz2, 2, &status[3]);
+		   	   stack=0;
+		   	   break;
+	}
+  if((status[0]==1)&&(status[1]==1))statusDozator1 = 2;
+  else statusDozator1 = 0;
+  if((status[2]==1)&&(status[3]==1))statusDozator2 = 2;
+  else statusDozator2 = 0;
+   //++?
+   /*if(statusDozator2==2){//Если данные считались верно и тем не менее не соотвествуют зданию даже на 50%
+		if(curentPerfSand<calcPerfSand*0.5){ 
+			vibroToggle(1);//Запускаем вибратор на 5 секунд	
+									   if(Act()){
+
+		  							   }
+									   else{
+      								   		Run();
+	 								   }			
+										
+		}
+		else
+	}*/
+ }	
+}
+//Управление вибратором-----------------------------------
+void vibroToggle(int command){
+	 SetPioDir(1,0);
+	 if(command==1){
+          vibro = 1;
+	 	  Print("\r\nVibro started on 5 second");
+		  SetPio(1,1);
+	 }
+	 else{
+          vibro = 0;
+		  Print("\r\nVibro stopped");
+          SetPio(1,0);
+	 }
+}
+//-------------Опрос дозатора---------------------
+int getDozator(int NumDVL, int NumCom, int *status){
+  
+// чтение информации с ДВЛ - дозиметра
+ unsigned char command[80];
+ int           c1[80];
+ unsigned char Answer[255];
+ unsigned int  crc,pc,kt  ;
+ unsigned long pop=0      ;
+ unsigned int  lenans=0   ;
+ unsigned int CountBytes  ; 
+
+union
+  {
+   unsigned long val;
+   float sf;
+   unsigned char byte[4];
+  } ddata; 
+
+switch (NumCom)
+  {
+   case 1: command[0]=NumDVL;//текущая производительность
+           command[1]=0x03;
+           command[2]=0x00;
+           command[3]=0x2E; //46;
+           command[4]=0x00;
+           command[5]=0x02; //47;
+           CountBytes=6;
+           break;
+   case 2: command[0]=NumDVL;//плановая производительность
+           command[1]=0x03;
+           command[2]=0x00;
+           command[3]=0x30; //48;
+           command[4]=0x00;
+           command[5]=0x02; //49;
+           CountBytes=6;
+   break;
+  }
+
+ crc=CRC16(command,CountBytes);
+ command[CountBytes]  =(unsigned char)crc;
+ command[CountBytes+1]=(unsigned char)(crc>>8);
+
+ClearCom(2);
+ for (pc=0;pc<8;pc++)    c1[pc] = command[pc];
+ for (pc=0;pc<8;pc++)    ToCom(2,c1[pc])     ;
+ pc=0;pop=0;kt=0;lenans=5+4;
+ while ((pc!=1)&&(pop<20000L))
+  {
+   if (IsCom(2))
+    if (IsTxBufEmpty(2))
+     {
+      Answer[kt]=ReadCom(2);
+      kt++;if (kt>=lenans) break;
+     }
+   pop++;
+  }
+ WaitTransmitOver2();
+if (lenans==kt) /* ответ пришёл правильный */
+  {
+   if (Answer[1]==0x03)
+    {
+      Print("\r\nReceive is correct from %d",NumDVL);
+	  
+	  switch (NumCom)
+      {
+       case 1: case 2: /* ответ о производительности */ 
+	   		*status=0; 
+	   		ddata.byte[3]=Answer[3];
+   			ddata.byte[2]=Answer[4];
+   			ddata.byte[1]=Answer[5];
+   			ddata.byte[0]=Answer[6];
+			*status = 0;
+   			return ddata.val * 0.01;	   
+      }
+     *status = 1;
+    }
+   else
+    {
+     Print("\r\nError of receive! Num bytes = %d must been = %d",kt,lenans);
+	 *status = 1;
+    }
+  }
+ else /* ответ не пришел */
+  {
+   Print("\r\nError of receive! Num bytes = %d must been = %d",kt,lenans);
+   *status = 1;
+  } 
+return -1;
+}
+
+//-------------Отправка задания дозатору---------------------
+int setDozator(int adrDevice, float newVal){
+// запись информации в ДВЛ - дозиметра
+ unsigned char command[80];
+ int           c1[80];
+ unsigned char Answer[255];
+ unsigned int  crc,pc,kt,crcAnswer;
+ unsigned long pop=0;
+ unsigned int  lenans=0;
+ unsigned int CountBytes; 
+
+union{
+	 float value;//4 byte
+	 char byte[4];
+}val;
+
+command[0]=adrDevice;
+command[1]=0x10;//команда записи
+command[2]=0x00;
+command[3]=0x30; //48;
+command[4]=0x00;
+command[5]=0x02; //49;
+CountBytes=10;
+   
+val.value = newVal*100;
+command[6] = val.byte[3]; 
+command[7] = val.byte[2]; 
+command[8] = val.byte[1]; 
+command[9] = val.byte[0]; 
+
+
+crc=CRC16(command,CountBytes);
+command[CountBytes]  =(unsigned char)crc;
+command[CountBytes+1]=(unsigned char)(crc>>8); 
+
+//Отсылка запроса на установку значения
+ClearCom(2);
+ for (pc=0;pc<12;pc++)    c1[pc] = command[pc];
+ for (pc=0;pc<12;pc++)    ToCom(2,c1[pc])     ;
+ pc=0;pop=0;kt=0;lenans=8;
+ while ((pc!=1)&&(pop<20000L))//Получение ответа
+  {
+   if (IsCom(2))
+    if (IsTxBufEmpty(2))
+     {
+      Answer[kt]=ReadCom(2);
+      kt++;if (kt>=lenans) break;
+     }
+   pop++;
+  }
+ WaitTransmitOver2();
+
+if (kt>=lenans) /* ответ пришёл правильный */
+  {
+   if ((Answer[0]==command[0])&&(Answer[1]==command[1])&&(Answer[2]==command[2])&&(Answer[3]==command[3])&&(Answer[4]==command[4])&&(Answer[5]==command[5]))
+    {
+	 crcAnswer=CRC16(Answer,kt-2);
+	 if((Answer[6]==(unsigned char)crcAnswer)&&(Answer[7]==(unsigned char)(crcAnswer>>8)))
+	 {
+	  			Print("\r\nCorrect adr=%d",adrDevice);
+     			return 1;
+	 }
+    }
+   else
+    {
+     Print("\r\nError: some bytes is lost");
+     return 0;
+    }
+  }
+ else /* ответ не пришел */
+  {
+   Print("\r\nError: some bytes is lost");
+   return 0;
+  }
+}
+
+//Установка активности извести----------------------------
+void setIzvActivity(float val){
+	 curentIzvestActivity=val;
+}
+//Установка молотовяжущего--------------------------------
+void setMV(float val){
+     curentMV=val;
+}
+//Установка производительности----------------------------
+void setPerfomance(float val){
+     neededPerfomanceSummary=val;
+}
+//-------------Отправка данных на АРМ---------------------
+void sendDataEth(int current_socket){
+int i;
+//Заглушка для отладки
+tmpbuf.tmpstruct.start[0]=1;
+tmpbuf.tmpstruct.start[1]=1;
+tmpbuf.tmpstruct.start[2]=1;
+tmpbuf.tmpstruct.start[3]=1;
+tmpbuf.tmpstruct.start[4]=1;
+tmpbuf.tmpstruct.data[0]=workmode;//workmode
+tmpbuf.tmpstruct.data[1]=curentPerfIzvest;//текущая производительность извести
+tmpbuf.tmpstruct.data[2]=calcPerfIzvest;//вычисленная производительность извести
+tmpbuf.tmpstruct.data[3]=curentIzvestActivity;//активность извести
+tmpbuf.tmpstruct.data[4]=curentPerfIzvest;//текущая производительность песка
+tmpbuf.tmpstruct.data[5]=calcPerfSand;//вычисленная производительность песка
+tmpbuf.tmpstruct.data[6]=curentMV;//Молото вяжущее
+tmpbuf.tmpstruct.data[7]=statusDozator1;//Статус дозатора извести
+tmpbuf.tmpstruct.data[8]=statusDozator2;//Статус дозатора песка
+tmpbuf.tmpstruct.data[9]=curentPerfomanceSummary;//текущая производительность
+tmpbuf.tmpstruct.data[10]=neededPerfomanceSummary;//уставка производительности
+tmpbuf.tmpstruct.data[11]=vibro;//Вибратор
+
+
+for(i=0;i<53;i++){
+    Print("%d.",tmpbuf.buf[i]);
+	} 
+send(current_socket, tmpbuf.buf, 53, 0);
+}
+//-------------Анализ данных с АРМ---------------------
+void analizDataEth(char *buf,int len_buf, int current_socket){
+     int error=0;
+	 int i,n;
+//Реальный буффер
+   Print("Len=%d",len_buf);
+   for (i=0;i<10;i++) Print("=%d=",buf[i]);
+   if (len_buf<6) return;
+	 for(i=0;i<len_buf-6;i++)
+      {
+   	   if ((buf[i]==1)&&(buf[i+1]==1)&&(buf[i+2]==1)&&(buf[i+3]==1)&&(buf[i+4]==1))
+        {
+		if ((i+9)<len_buf){
+		   for(n=0;n<10;n++){
+		   		answertmpbuf.buf[n]=buf[i+n];
+		   		}
+           i=i+10;
+		   }
+         else error=1;
+		}
+		
+		if(error==1) break;
+	}	
+	if (!error)		Print("not error\r\n");
+	else            Print("error \r\n");
+	if (error){		   
+          	   return;
+	   }
+	Print("Simbol=%d\r\n",answertmpbuf.tmpstruct.i_command);
+	switch (answertmpbuf.tmpstruct.i_command){
+		case 'i':setIzvActivity(answertmpbuf.tmpstruct.value); 
+			 break;
+		case 'r':sendDataEth(current_socket); 
+             break;
+		case 'm':setMV(answertmpbuf.tmpstruct.value); 
+             break;
+ 		case 'p':setPerfomance(answertmpbuf.tmpstruct.value); 
+             break;
+		case 'с':calcWork(); 
+             break;
+        default  : error=1;break;
+     } 
+}
+//-----------Обработчик сети TCP-IP-----------------------
+void netWork(int current_socket){
+	int iRet;
+    char buf[1024];
+	iRet=recv(current_socket, buf, 1024, 0);
+    if(iRet<=0)
+    {
+        shutdown(current_socket,2);
+		closesocket(current_socket);                    
+		FD_CLR(current_socket,&s_fds);
+		socketPort[current_socket]=-1;
+		if(current_socket>=16)
+			ActiveSkt[1]&=~(1<<(current_socket-16));
+		else
+			ActiveSkt[0]&=~(1<<current_socket);
+    }
+    else
+	{
+		buf[iRet]=0x0;
+		analizDataEth(buf,iRet,current_socket);	
+	}
+}
+//-------------Формирование задания для дозаторов---------------------
+//Актив. М-В(%)/Актив.Извести(%)*Производительность(т.ч)=Дозировка извести(т.ч)
+//Дозировка песка = Производительность - Дозировка извести (т.ч)
+void calcWork(){
+	 int error1, error2;
+//++? curentIzvestActivity==0
+	 if(curentIzvestActivity==0)curentIzvestActivity=1;
+	 calcPerfIzvest = (curentMV/curentIzvestActivity)*neededPerfomanceSummary;
+	 calcPerfSand = neededPerfomanceSummary-calcPerfIzvest;
+	 error1 = setDozator(adrDoz1, calcPerfIzvest);
+	 error2 = setDozator(adrDoz2, calcPerfSand);
+	 if(error1==0){
+	 	  statusDozator1=0;
+	 			   }
+	 else{
+     	  statusDozator1=2; 
+	 }
+	 if(error2==0){
+	 	  statusDozator1=0;
+	 			   }
+	 else{
+     	  statusDozator1=2; 
+	 }
+}
+
+//-----------------------------------------------------------------------------
+
+void main(void)
+{
+	struct sockaddr_in serverAdd[2];
+	struct sockaddr_in clientAdd;	
+	int clientAddLen;
+	int new_con,i,c,err;
+	int s[2];
+
+	stack = 0;
+	adrDoz1=0x01;//Поменять	
+	adrDoz2=0x02;//Поменять
+	firststartdoz = 1;
+	timers_duration=5000; 
+	TimerOpen(); 
+	vibro = 0;	
+
+    	
+	InitLib();
+    InstallCom(2,9600L,8,0,1)    ;
+	Print("\r\n Ј 1: €­ЁжЁ «Ё§ жЁп TCP бҐаўҐа !");                  /* инициализация */
+	err=NetStart();
+	if(err<0)
+	{
+		Print("\n\rЋиЁЎЄ  Ё­ЁжЁ «Ё§ жЁЁ TCP бҐаўҐа ");
+		return;
+	}
+	
+	Print("\r\n Ј 2: ‘®§¤ ­ЁҐ б®ЄҐв®ў Ё Ё¬Ґ­ бўп§Ґ© ¤«п Їа®б«гиЁў Ґ¬ле б®Ґ¤Ё­Ґ­Ё©!");
+	for(i=0; i<2; i++)
+	{
+		s[i]=socket(PF_INET, SOCK_STREAM, 0);
+		memset(&serverAdd[i], 0, sizeof(serverAdd[i]));
+		serverAdd[i].sin_family= AF_INET;
+		serverAdd[i].sin_addr.s_addr= 0;
+		serverAdd[i].sin_port= htons(service_port[i]);
+		bind(s[i], (struct sockaddr *)&serverAdd[i], sizeof(serverAdd[i]));
+		listen(s[i], MaxClentSocket-1);
+	}
+  
+	Print("\r\n Ј 3.1. ®¦Ё¤ ­ЁҐ б®ЄҐв®ў Ё ЇаЁс¬!");
+	Print("\r\n Ј 3.2. ўл§®ў бҐаўЁб  Ё ®вўҐв!")   ;
+	for(;;)
+	{
+		
+        if(firststartdoz==1){     //проверка первого запуска	
+        		firstRunCheck();              	 	
+		}
+		else; 		
+               
+	 	checkSystem();//Опрос системы
+
+		if(Act()){
+		     Print("\r\nVibrating...");
+		}
+		else{
+			 vibroToggle(0);
+			 }
+
+		YIELD();
+		//Step 3-1: Wait for activity on sockets and accept a connection
+		for(i=0; i<2; i++)
+		{
+			FD_ZERO(&rfds);
+			FD_SET(s[i],&rfds);
+			
+			new_con=selectsocket(MaxClentSocket, &rfds, NULL, NULL, &seltime);	//wait for activity on a set of sockets
+			if(new_con>0)
+			{
+				memset( &clientAdd, 0, sizeof(clientAdd));
+				clientAddLen = sizeof(clientAdd);
+				c = accept(s[i],(struct sockaddr *)&clientAdd, &clientAddLen);
+				Print("create socket %d \n\r",c);
+				if(c<0)
+				{
+					shutdown(c,2);
+					closesocket(c);
+				}
+				else if(c>0 && c<MaxClentSocket)
+				{
+					FD_SET(c,&s_fds);
+					socketPort[c]=service_port[i];
+					if(c>=16)
+						ActiveSkt[1]|=1<<(c-16);
+					else
+						ActiveSkt[0]|=1<<c;
+					
+					SOCKET_SET_TCP_KEEP_ALIVE_ON(c);
+				}
+			}
+		}
+		//Step 3-2 perform service, receive and send
+		for(i=1; i<MaxClentSocket; i++)
+		{
+			if(FD_ISSET(i,&s_fds))
+			{
+				if(!ioctlsocket(i,FIONREAD,&err) && (err>0))
+				{
+					if(socketPort[i]==10000)
+					{
+						netWork(i);
+					}
+                   else Print("\r\nSendPort=%d",socketPort[i]); 
+				}
+			}
+		}
+        // опрос по протоколу MODBUS RTU
+  
+		//Press ESC to terminate the program.
+		if(Kbhit() && Getch()=='q')
+		{
+			Nterm();
+            RestoreCom(2);
+			TimerClose(); 
+			return;
+		}
+       count_cikl++;
+	}
+ 
+}
+
