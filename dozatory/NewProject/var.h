@@ -1,6 +1,6 @@
-#define Run()       timers_time_run=TimerReadValue();timers_action=1;                                             
-#define Act()       (((TimerReadValue()-timers_time_run)<timers_duration)&&(timers_action==1))  
-#define Stop()      timers_action=0;    
+#define Run(NumTimer)       timers_time_run[NumTimer]=TimerReadValue();timers_action[NumTimer]=1;                                        // запуск таймера
+#define Act(NumTimer)       (((TimerReadValue()-timers_time_run[NumTimer])<timers_duration[NumTimer])&&(timers_action[NumTimer]==1))     // таймер активен
+#define Stop(NumTimer)      timers_action[NumTimer]=0;                                                                                   // Останов таймера
 
 union{	//ОТВЕТ НА АРМ
    		 unsigned char buf[53];
@@ -37,10 +37,11 @@ int statusDozator1;
 int statusDozator2;
 int status[4];
 int countFCD;
+int vibrotimer;
 
 unsigned int CRC16(unsigned char *Data, unsigned int size);
-void  firstRunCheck();
-void checkSystem();
+void  firstRunCheck(void);
+void checkSystem(void);
 void vibroToggle(int command);
 int getDozator(int NumDVL, int NumCom, int *status);
 int setDozator(int adrDevice, float newVal);
@@ -50,10 +51,10 @@ void setPerfomance(float val);
 void sendDataEth(int current_socket); 
 void analizDataEth(char *buf,int len_buf, int current_socket);
 void netWork(int current_socket);
-void calcWork();
+void calculateWork(void);
 
 
 //Таймеры
-unsigned char timers_action; 
-unsigned long timers_duration;
-unsigned long timers_time_run;
+unsigned char timers_action[2]; 
+unsigned long timers_duration[2];
+unsigned long timers_time_run[2];

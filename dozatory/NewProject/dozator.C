@@ -82,24 +82,23 @@ if (firststartdoz==0)
 		   	   stack=0;
 		   	   break;
 	}
-  if((status[0]==1)&&(status[1]==1))statusDozator1 = 2;
+  if((status[0]==1)||(status[1]==1))statusDozator1 = 2;
   else statusDozator1 = 0;
-  if((status[2]==1)&&(status[3]==1))statusDozator2 = 2;
+  if((status[2]==1)||(status[3]==1))statusDozator2 = 2;
   else statusDozator2 = 0;
-   //++?
-   /*if(statusDozator2==2){//Если данные считались верно и тем не менее не соотвествуют зданию даже на 50%
-		if(curentPerfSand<calcPerfSand*0.5){ 
-			vibroToggle(1);//Запускаем вибратор на 5 секунд	
-									   if(Act()){
 
-		  							   }
-									   else{
-      								   		Run();
-	 								   }			
-										
+   if(statusDozator2==0){//Если данные считались верно
+		if(curentPerfSand<calcPerfSand*0.5){// и тем не менее не соотвествуют зданию даже на 50% 
+			    if(Act(1)){//если уже запущен то пропуск если нет то запускаем
+
+		  				}
+				else{
+      				Run(1);//Запускаем на 20 секунд
+					vibrotimer=1;//знак что запускаем таймер ожидания
+	 				} 										
 		}
-		else
-	}*/
+		else;
+	}
  }	
 }
 //Управление вибратором-----------------------------------
@@ -263,14 +262,18 @@ if (kt>=lenans) /* ответ пришёл правильный */
   {
    if ((Answer[0]==command[0])&&(Answer[1]==command[1])&&(Answer[2]==command[2])&&(Answer[3]==command[3])&&(Answer[4]==command[4])&&(Answer[5]==command[5]))
     {
-	 crcAnswer=CRC16(Answer,kt-2);
-	 if((Answer[6]==(unsigned char)crcAnswer)&&(Answer[7]==(unsigned char)(crcAnswer>>8)))
-	 {
+	  crcAnswer=CRC16(Answer,kt-2);
+	  if((Answer[6]==(unsigned char)crcAnswer)&&(Answer[7]==(unsigned char)(crcAnswer>>8)))
+	  {
 	  			Print("\r\nCorrect adr=%d",adrDevice);
      			return 1;
-	 }
+	 			}
+	  else{
+                Print("\r\nCRC not correct from adr=%d",adrDevice);
+     			return 0;
+	 			}
     }
-   else
+   else //неверный фрейм пакета
     {
      Print("\r\nError: some bytes is lost");
      return 0;
@@ -361,7 +364,7 @@ void analizDataEth(char *buf,int len_buf, int current_socket){
              break;
  		case 'p':setPerfomance(answertmpbuf.tmpstruct.value); 
              break;
-		case 'с':calcWork(); 
+		case 'с':calculateWork();            
              break;
         default  : error=1;break;
      } 
@@ -391,7 +394,7 @@ void netWork(int current_socket){
 //-------------Формирование задания для дозаторов---------------------
 //Актив. М-В(%)/Актив.Извести(%)*Производительность(т.ч)=Дозировка извести(т.ч)
 //Дозировка песка = Производительность - Дозировка извести (т.ч)
-void calcWork(){
+void calculateWork(){
 	 int error1, error2;
 //++? curentIzvestActivity==0
 	 if(curentIzvestActivity==0)curentIzvestActivity=1;
@@ -427,12 +430,14 @@ void main(void)
 	adrDoz1=0x01;//Поменять	
 	adrDoz2=0x02;//Поменять
 	firststartdoz = 1;
-	timers_duration=5000; 
-	TimerOpen(); 
-	vibro = 0;	
+	timers_duration[1]=20000; 
+	timers_duration[2]=5000;  	 
+	vibro = 0;
+	vibrotimer=0;	
 
     	
 	InitLib();
+	TimerOpen();
     InstallCom(2,9600L,8,0,1)    ;
 	Print("\r\n Ј 1: €­ЁжЁ «Ё§ жЁп TCP бҐаўҐа !");                  /* инициализация */
 	err=NetStart();
@@ -466,11 +471,24 @@ void main(void)
                
 	 	checkSystem();//Опрос системы
 
-		if(Act()){
-		     Print("\r\nVibrating...");
+		if(Act(1)){ //Проверка отведенного времени
+		     Print("\r\waiting...");//ждем
+		}
+		else{
+			 if(vibrotimer==1){ //если таймер был запущен и кончился то..
+			  				  vibroToggle(1);
+			 				  Stop(1);
+			 				  Run(2);
+							  vibrotimer=0;
+							  }			 
+		}
+
+		if(Act(2)){ //Проверка времени вибрации
+		     Print("\r\vibrating...");
 		}
 		else{
 			 vibroToggle(0);
+			 Stop(2);
 			 }
 
 		YIELD();
