@@ -88,7 +88,7 @@ if (firststartdoz==0)
   else statusDozator2 = 0;
 
    if(statusDozator2==0){//Если данные считались верно
-		if(curentPerfSand<calcPerfSand*0.5){// и тем не менее не соотвествуют зданию даже на 50% 
+		if(curentPerfSand<calcPerfSand*0.5){// и тем не менее не соотвествуют заданию даже на 50% 
 			    if(Act(1)){//если уже запущен то пропуск если нет то запускаем
 
 		  				}

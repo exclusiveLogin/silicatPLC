@@ -1838,3 +1838,27 @@ PostMessage(FindWindow("TPACQuery","Модуль опроса"),WM_USER+1,tmpcom,0);
 }
 //---------------------------------------------------------------------------
 
+void __fastcall TForm1::btn_mainTabClick(TObject *Sender)
+{
+TabSheet1->TabVisible = true;
+TabSheet2->TabVisible = false;
+TabSheet3->TabVisible = false;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::btn_trendTabClick(TObject *Sender)
+{
+TabSheet1->TabVisible = false;
+TabSheet2->TabVisible = true;
+TabSheet3->TabVisible = false;
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::btn_logTabClick(TObject *Sender)
+{
+TabSheet1->TabVisible = false;
+TabSheet2->TabVisible = false;
+TabSheet3->TabVisible = true;
+}
+//---------------------------------------------------------------------------
+

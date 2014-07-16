@@ -3,7 +3,7 @@ object Form1: TForm1
   Top = 2
   BorderStyle = bsSingle
   Caption = 'DOZATOR_SCADA'
-  ClientHeight = 1090
+  ClientHeight = 1070
   ClientWidth = 1400
   Color = clGray
   Font.Charset = DEFAULT_CHARSET
@@ -1095,7 +1095,7 @@ object Form1: TForm1
   end
   object Image2: TImage
     Left = 0
-    Top = 993
+    Top = 973
     Width = 1400
     Height = 97
     Align = alBottom
@@ -2735,7 +2735,7 @@ object Form1: TForm1
   end
   object workMode1_S1: TLabel
     Left = 1104
-    Top = 1024
+    Top = 1000
     Width = 257
     Height = 41
     Alignment = taCenter
@@ -2785,7 +2785,7 @@ object Form1: TForm1
   end
   object statusDebug1_S1: TLabel
     Left = 568
-    Top = 1032
+    Top = 1008
     Width = 262
     Height = 23
     Caption = 'Нет связи с модулем опроса'
@@ -2799,17 +2799,40 @@ object Form1: TForm1
     ParentFont = False
     Transparent = True
   end
+  object btn_mainTab: TImage
+    Left = 16
+    Top = 984
+    Width = 81
+    Height = 81
+    OnClick = btn_mainTabClick
+  end
+  object btn_trendTab: TImage
+    Left = 128
+    Top = 984
+    Width = 81
+    Height = 81
+    OnClick = btn_trendTabClick
+  end
+  object btn_logTab: TImage
+    Left = 240
+    Top = 984
+    Width = 81
+    Height = 81
+    OnClick = btn_logTabClick
+  end
   object PageControl1: TPageControl
     Left = 0
     Top = 71
     Width = 1400
-    Height = 922
+    Height = 902
     ActivePage = TabSheet1
     Align = alClient
     HotTrack = True
     MultiLine = True
+    TabHeight = 1
     TabOrder = 0
-    TabPosition = tpBottom
+    TabPosition = tpLeft
+    TabWidth = 1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Hint = 'Главная форма'
@@ -2825,8 +2848,8 @@ object Form1: TForm1
       object Image3: TImage
         Left = 0
         Top = 0
-        Width = 1392
-        Height = 894
+        Width = 1391
+        Height = 892
         Align = alClient
         AutoSize = True
         Picture.Data = {
@@ -17275,11 +17298,12 @@ object Form1: TForm1
     object TabSheet2: TTabSheet
       Caption = 'Тренды'
       ImageIndex = 1
+      TabVisible = False
       object PanelTrend: TPanel
         Left = 0
         Top = 0
         Width = 1392
-        Height = 894
+        Height = 912
         Align = alClient
         BorderStyle = bsSingle
         Font.Charset = DEFAULT_CHARSET
@@ -17292,7 +17316,7 @@ object Form1: TForm1
         TabOrder = 0
         object Splitter4: TSplitter
           Left = 1
-          Top = 726
+          Top = 744
           Width = 1386
           Height = 3
           Cursor = crVSplit
@@ -17300,7 +17324,7 @@ object Form1: TForm1
         end
         object PView: TPanel
           Left = 1
-          Top = 729
+          Top = 747
           Width = 1386
           Height = 160
           Align = alBottom
@@ -17374,7 +17398,7 @@ object Form1: TForm1
           Left = 1
           Top = 21
           Width = 26
-          Height = 673
+          Height = 691
           Align = alLeft
           Max = 25
           Orientation = trVertical
@@ -17393,7 +17417,7 @@ object Form1: TForm1
           Left = 27
           Top = 21
           Width = 1360
-          Height = 673
+          Height = 691
           AllowPanning = pmNone
           AllowZoom = False
           AnimatedZoomSteps = 4
@@ -17519,7 +17543,7 @@ object Form1: TForm1
         end
         object Panel71: TPanel
           Left = 1
-          Top = 694
+          Top = 712
           Width = 1386
           Height = 32
           Align = alBottom
@@ -17808,18 +17832,19 @@ object Form1: TForm1
     object TabSheet3: TTabSheet
       Caption = 'Журнал'
       ImageIndex = 2
+      TabVisible = False
       object Splitter1: TSplitter
         Left = 465
         Top = 0
         Width = 3
-        Height = 894
+        Height = 892
         Cursor = crHSplit
       end
       object Panel64: TPanel
         Left = 0
         Top = 0
         Width = 465
-        Height = 894
+        Height = 892
         Align = alLeft
         BevelInner = bvRaised
         BorderStyle = bsSingle
@@ -17848,7 +17873,7 @@ object Form1: TForm1
           Left = 2
           Top = 59
           Width = 457
-          Height = 829
+          Height = 847
           Align = alClient
           DataSource = DSActiveSob
           Font.Charset = DEFAULT_CHARSET
@@ -17919,8 +17944,8 @@ object Form1: TForm1
       object Panel65: TPanel
         Left = 468
         Top = 0
-        Width = 924
-        Height = 894
+        Width = 923
+        Height = 892
         Align = alClient
         BevelInner = bvRaised
         BorderStyle = bsSingle
@@ -17928,8 +17953,8 @@ object Form1: TForm1
         TabOrder = 1
         object Splitter2: TSplitter
           Left = 2
-          Top = 658
-          Width = 916
+          Top = 656
+          Width = 915
           Height = 3
           Cursor = crVSplit
           Align = alBottom
@@ -17937,7 +17962,7 @@ object Form1: TForm1
         object StaticText56: TStaticText
           Left = 2
           Top = 2
-          Width = 916
+          Width = 915
           Height = 22
           Align = alTop
           Alignment = taCenter
@@ -17956,7 +17981,7 @@ object Form1: TForm1
         object Panel66: TPanel
           Left = 2
           Top = 24
-          Width = 916
+          Width = 915
           Height = 35
           Align = alTop
           BevelOuter = bvLowered
@@ -18185,8 +18210,8 @@ object Form1: TForm1
         end
         object Panel67: TPanel
           Left = 2
-          Top = 661
-          Width = 916
+          Top = 659
+          Width = 915
           Height = 227
           Align = alBottom
           BevelOuter = bvLowered
@@ -18196,7 +18221,7 @@ object Form1: TForm1
           object StaticText59: TStaticText
             Left = 1
             Top = 1
-            Width = 910
+            Width = 909
             Height = 22
             Align = alTop
             Alignment = taCenter
@@ -18215,7 +18240,7 @@ object Form1: TForm1
           object CLBFS: TCheckListBox
             Left = 1
             Top = 23
-            Width = 910
+            Width = 909
             Height = 199
             OnClickCheck = CLBFSClickCheck
             Align = alClient
@@ -18245,8 +18270,8 @@ object Form1: TForm1
         object DBGridEh3: TDBGridEh
           Left = 2
           Top = 59
-          Width = 916
-          Height = 599
+          Width = 915
+          Height = 597
           Align = alClient
           DataSource = DSListSob
           Font.Charset = DEFAULT_CHARSET

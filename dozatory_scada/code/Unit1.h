@@ -198,6 +198,9 @@ __published:	// IDE-managed Components
         TImage *vibroSand1Right_S1;
         TLabel *statusDebug1_S1;
         TImage *btn_confirm1_S1;
+        TImage *btn_mainTab;
+        TImage *btn_trendTab;
+        TImage *btn_logTab;
         void __fastcall Timer1Timer(TObject *Sender);
         void __fastcall btn_logClick(TObject *Sender);
     void __fastcall BBBuilderTrendClick(TObject *Sender);
@@ -258,6 +261,9 @@ __published:	// IDE-managed Components
           AnsiString &Text, bool DisplayText);
         void __fastcall Timer3Timer(TObject *Sender);
         void __fastcall btn_confirm1_S1Click(TObject *Sender);
+        void __fastcall btn_mainTabClick(TObject *Sender);
+        void __fastcall btn_trendTabClick(TObject *Sender);
+        void __fastcall btn_logTabClick(TObject *Sender);
 private:	// User declarations
         unsigned long MasBits[4][1000]               ; // массив бит дл€ отображени€ сложных элементов
         int             NewSizeWidth;
