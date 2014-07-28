@@ -50,42 +50,78 @@ void  firstRunCheck(){//опрос дозаторов при первом запуске
   switch (stack)
    {
 	 case 0: curentPerfIzvest = getDozator(adrDoz1, 1, &status[0]);if (status[0]==0) stack++;break;
-	 case 1: calcPerfIzvest   = getDozator(adrDoz1, 2, &status[1]);if (status[1]==0) stack++;break;
+	 case 1: oldPerfIzvest   = getDozator(adrDoz1, 2, &status[1]);if (status[1]==0) stack++;break;
 	 case 2: curentPerfSand   = getDozator(adrDoz2, 1, &status[2]);if (status[2]==0) stack++;break;
-	 case 3: calcPerfSand     = getDozator(adrDoz2, 2, &status[3]);if (status[3]==0) stack++;break;
+	 case 3: oldPerfSand     = getDozator(adrDoz2, 2, &status[3]);if (status[3]==0) stack++;break;
 	}
    if((status[0]==0)&&(status[1]==0)&&(status[2]==0)&&(status[3]==0))
     {
-	 firststartdoz=0;
+	 firststartdoz=0;stack=0;Print("\r\nNOT FIRSTDOZATOR");
 	}
    else
     {
-	 firststartdoz = 1;
+	// firststartdoz = 1;
 	}
 }
 
-//------------Анализ состояния системы--------------------
+//------------Анали состояния системы--------------------
 void checkSystem(){
+float tmp;
+int pc=0;
 if (firststartdoz==0)
 {
+ Print("\r\nOK=%d,%d",stack,pc);
  switch(stack){
- 	    case 0:curentPerfIzvest = getDozator(adrDoz1, 1, &status[0]);
+ 	    case 0:while (pc<3)
+				{
+                 tmp = getDozator(adrDoz1, 1, &status[0]);
+			     if (status[0]==0) { 
+				 	curentPerfIzvest = tmp;
+					break; 
+					}
+				pc++;
+				}
 	   		   stack++;	 			   
 	    	   break;
-	    case 1:calcPerfIzvest = getDozator(adrDoz1, 2, &status[1]);
+	    case 1:while (pc<3)
+				{
+				tmp = getDozator(adrDoz1, 2, &status[1]);
+				if(status[1]==0) { 
+					oldPerfIzvest = tmp;
+					break; 
+					}
+				pc++;
+				}
 	   		   stack++;
 		  	   break;
-	    case 2:curentPerfSand = getDozator(adrDoz2, 1, &status[2]);
-	      	   stack++;
+	    case 2:while (pc<3)
+				{
+				tmp = getDozator(adrDoz2, 1, &status[2]);
+				if(status[2]==0) { 
+					curentPerfSand = tmp;
+					break; 
+					}
+				pc++;
+				}
+	   		   stack++;
 		  	   break;
-	    case 3:calcPerfSand = getDozator(adrDoz2, 2, &status[3]);
-		   	   stack=0;
-		   	   break;
+	    case 3:while (pc<3)
+				{
+				tmp = getDozator(adrDoz2, 2, &status[3]);
+				if(status[3]==0) { 
+					oldPerfSand = tmp;
+					break; 
+					}
+				pc++;
+				}
+	   		   stack=0;
+		  	   break;
 	}
   if((status[0]==1)||(status[1]==1))statusDozator1 = 2;
   else statusDozator1 = 0;
   if((status[2]==1)||(status[3]==1))statusDozator2 = 2;
   else statusDozator2 = 0;
+  curentPerfomanceSummary = curentPerfSand + curentPerfIzvest;//++++++
 
    if(statusDozator2==0){//Если данные считались верно
 		if(curentPerfSand<calcPerfSand*0.5){// и тем не менее не соотвествуют заданию даже на 50% 
@@ -116,7 +152,7 @@ void vibroToggle(int command){
 	 }
 }
 //-------------Опрос дозатора---------------------
-int getDozator(int NumDVL, int NumCom, int *status){
+float getDozator(int NumDVL, int NumCom, int *status){
   
 // чтение информации с ДВЛ - дозиметра
  unsigned char command[80];
@@ -159,6 +195,8 @@ switch (NumCom)
  command[CountBytes+1]=(unsigned char)(crc>>8);
 
 ClearCom(2);
+ Print("\r\n");
+ for (pc=0;pc<8;pc++)   Print("%d;",command[pc]);
  for (pc=0;pc<8;pc++)    c1[pc] = command[pc];
  for (pc=0;pc<8;pc++)    ToCom(2,c1[pc])     ;
  pc=0;pop=0;kt=0;lenans=5+4;
@@ -188,6 +226,7 @@ if (lenans==kt) /* ответ пришёл правильный */
    			ddata.byte[1]=Answer[5];
    			ddata.byte[0]=Answer[6];
 			*status = 0;
+			Print("NumCom=%d(%f)",NumCom,ddata.val * 0.01);
    			return ddata.val * 0.01;	   
       }
      *status = 1;
@@ -218,24 +257,27 @@ int setDozator(int adrDevice, float newVal){
  unsigned int CountBytes; 
 
 union{
-	 float value;//4 byte
+	 long value;//4 byte //++? float
 	 char byte[4];
+	 float f;
 }val;
 
-command[0]=adrDevice;
-command[1]=0x10;//команда записи
-command[2]=0x00;
-command[3]=0x30; //48;
-command[4]=0x00;
-command[5]=0x02; //49;
-CountBytes=10;
-   
-val.value = newVal*100;
-command[6] = val.byte[3]; 
-command[7] = val.byte[2]; 
-command[8] = val.byte[1]; 
-command[9] = val.byte[0]; 
-
+command[0]=adrDevice;                //
+command[1]=0x10;//команда записи     //
+command[2]=0x00; // адрес            //
+command[3]=0x30; // 48;       //
+command[4]=0x00; // 
+command[5]=0x02; // количество регстров
+command[6]=0x04; // байт
+CountBytes=11;
+//val.f     = newVal*100;   
+val.value = (long)((float)newVal*100);
+//val.f = newVal*100;
+//Print("\r\nVal==%d",val.value);
+command[7]  = val.byte[3]; 
+command[8]  = val.byte[2]; 
+command[9]  = val.byte[1]; 
+command[10] = val.byte[0]; 
 
 crc=CRC16(command,CountBytes);
 command[CountBytes]  =(unsigned char)crc;
@@ -243,8 +285,8 @@ command[CountBytes+1]=(unsigned char)(crc>>8);
 
 //Отсылка запроса на установку значения
 ClearCom(2);
- for (pc=0;pc<12;pc++)    c1[pc] = command[pc];
- for (pc=0;pc<12;pc++)    ToCom(2,c1[pc])     ;
+ for (pc=0;pc<13;pc++)    c1[pc] = command[pc];
+ for (pc=0;pc<13;pc++)    ToCom(2,c1[pc])     ;
  pc=0;pop=0;kt=0;lenans=8;
  while ((pc!=1)&&(pop<20000L))//Получение ответа
   {
@@ -260,16 +302,18 @@ ClearCom(2);
 
 if (kt>=lenans) /* ответ пришёл правильный */
   {
+   Print("\r\n");
+   for (pc=0;pc<kt;pc++) Print("%d;",Answer[pc]);
    if ((Answer[0]==command[0])&&(Answer[1]==command[1])&&(Answer[2]==command[2])&&(Answer[3]==command[3])&&(Answer[4]==command[4])&&(Answer[5]==command[5]))
     {
 	  crcAnswer=CRC16(Answer,kt-2);
 	  if((Answer[6]==(unsigned char)crcAnswer)&&(Answer[7]==(unsigned char)(crcAnswer>>8)))
 	  {
-	  			Print("\r\nCorrect adr=%d",adrDevice);
+	  			Print("\r\nFor Write Correct adr=%d",adrDevice);
      			return 1;
 	 			}
 	  else{
-                Print("\r\nCRC not correct from adr=%d",adrDevice);
+                Print("\r\nFor Write CRC not correct from adr=%d",adrDevice);
      			return 0;
 	 			}
     }
@@ -309,10 +353,10 @@ tmpbuf.tmpstruct.start[3]=1;
 tmpbuf.tmpstruct.start[4]=1;
 tmpbuf.tmpstruct.data[0]=workmode;//workmode
 tmpbuf.tmpstruct.data[1]=curentPerfIzvest;//текущая производительность извести
-tmpbuf.tmpstruct.data[2]=calcPerfIzvest;//вычисленная производительность извести
+tmpbuf.tmpstruct.data[2]=oldPerfIzvest;//вычисленная производительность извести
 tmpbuf.tmpstruct.data[3]=curentIzvestActivity;//активность извести
-tmpbuf.tmpstruct.data[4]=curentPerfIzvest;//текущая производительность песка
-tmpbuf.tmpstruct.data[5]=calcPerfSand;//вычисленная производительность песка
+tmpbuf.tmpstruct.data[4]=curentPerfSand;//текущая производительность песка
+tmpbuf.tmpstruct.data[5]=oldPerfSand;//вычисленная производительность песка
 tmpbuf.tmpstruct.data[6]=curentMV;//Молото вяжущее
 tmpbuf.tmpstruct.data[7]=statusDozator1;//Статус дозатора извести
 tmpbuf.tmpstruct.data[8]=statusDozator2;//Статус дозатора песка
@@ -364,7 +408,7 @@ void analizDataEth(char *buf,int len_buf, int current_socket){
              break;
  		case 'p':setPerfomance(answertmpbuf.tmpstruct.value); 
              break;
-		case 'с':calculateWork();            
+		case 99:calculateWork();            
              break;
         default  : error=1;break;
      } 
@@ -425,7 +469,8 @@ void main(void)
 	int clientAddLen;
 	int new_con,i,c,err;
 	int s[2];
-
+	unsigned int kcount=0;
+    status[0]=1;status[1]=1;status[2]=1;status[3]=1;
 	stack = 0;
 	adrDoz1=0x01;//Поменять	
 	adrDoz2=0x02;//Поменять
@@ -438,7 +483,7 @@ void main(void)
     	
 	InitLib();
 	TimerOpen();
-    InstallCom(2,9600L,8,0,1)    ;
+    InstallCom(2,19200L,8,0,1)    ;
 	Print("\r\n Ј 1: €­ЁжЁ «Ё§ жЁп TCP бҐаўҐа !");                  /* инициализация */
 	err=NetStart();
 	if(err<0)
@@ -461,18 +506,24 @@ void main(void)
   
 	Print("\r\n Ј 3.1. ®¦Ё¤ ­ЁҐ б®ЄҐв®ў Ё ЇаЁс¬!");
 	Print("\r\n Ј 3.2. ўл§®ў бҐаўЁб  Ё ®вўҐв!")   ;
+    //setDozator(1,3.42);
+	//setDozator(2,2.2);
+	//setDozator(1,3.5);
 	for(;;)
 	{
 		
         if(firststartdoz==1){     //проверка первого запуска	
         		firstRunCheck();              	 	
 		}
-		else; 		
-               
-	 	checkSystem();//Опрос системы
-
+		else
+         {
+		  
+		  if ((kcount%15)==0)
+	 	   { Print("CheckSystem");checkSystem(); }//Опрос системы
+		  kcount++;
+		 }
 		if(Act(1)){ //Проверка отведенного времени
-		     Print("\r\waiting...");//ждем
+		     Print("\r\nwaiting...");//ждем
 		}
 		else{
 			 if(vibrotimer==1){ //если таймер был запущен и кончился то..
