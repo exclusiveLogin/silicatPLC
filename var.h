@@ -29,8 +29,8 @@ float curentIzvestActivity;
 float curentPerfomanceSummary;
 float neededPerfomanceSummary;
 float vibro;
-float oldPerfIzvest;
-float oldPerfSand;
+float setPerfIzvest;
+float setPerfSand;
 int stack;
 int adrDoz1;
 int adrDoz2;
@@ -54,6 +54,10 @@ void sendDataEth(int current_socket);
 void analizDataEth(char *buf,int len_buf, int current_socket);
 void netWork(int current_socket);
 void calculateWork(void);
+void setAutomaticMode(void);
+void setManualMode(void);
+void setPerfomanceIzvest(float val);
+void setPerfomanceSand(float val);
 
 
 //Таймеры

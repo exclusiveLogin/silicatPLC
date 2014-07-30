@@ -47,12 +47,12 @@ unsigned int CRC16(unsigned char *Data, unsigned int size)
 }
 //--------Первый запуск-------
 void  firstRunCheck(){//опрос дозаторов при первом запуске
-  switch (stack)
+  /*switch (stack)
    {
 	 case 0: curentPerfIzvest = getDozator(adrDoz1, 1, &status[0]);if (status[0]==0) stack++;break;
-	 case 1: oldPerfIzvest   = getDozator(adrDoz1, 2, &status[1]);if (status[1]==0) stack++;break;
+	 case 1: setPerfIzvest   = getDozator(adrDoz1, 2, &status[1]);if (status[1]==0) stack++;break;
 	 case 2: curentPerfSand   = getDozator(adrDoz2, 1, &status[2]);if (status[2]==0) stack++;break;
-	 case 3: oldPerfSand     = getDozator(adrDoz2, 2, &status[3]);if (status[3]==0) stack++;break;
+	 case 3: setPerfSand     = getDozator(adrDoz2, 2, &status[3]);if (status[3]==0) stack++;break;
 	}
    if((status[0]==0)&&(status[1]==0)&&(status[2]==0)&&(status[3]==0))
     {
@@ -61,7 +61,7 @@ void  firstRunCheck(){//опрос дозаторов при первом запуске
    else
     {
 	// firststartdoz = 1;
-	}
+	}*/firststartdoz=0;//delete me
 }
 
 //------------Анали состояния системы--------------------
@@ -71,7 +71,7 @@ int pc=0;
 if (firststartdoz==0)
 {
  Print("\r\nOK=%d,%d",stack,pc);
- switch(stack){
+ /*switch(stack){
  	    case 0:while (pc<3)
 				{
                  tmp = getDozator(adrDoz1, 1, &status[0]);
@@ -87,7 +87,7 @@ if (firststartdoz==0)
 				{
 				tmp = getDozator(adrDoz1, 2, &status[1]);
 				if(status[1]==0) { 
-					oldPerfIzvest = tmp;
+					setPerfIzvest = tmp;
 					break; 
 					}
 				pc++;
@@ -109,7 +109,7 @@ if (firststartdoz==0)
 				{
 				tmp = getDozator(adrDoz2, 2, &status[3]);
 				if(status[3]==0) { 
-					oldPerfSand = tmp;
+					setPerfSand = tmp;
 					break; 
 					}
 				pc++;
@@ -134,7 +134,7 @@ if (firststartdoz==0)
 	 				} 										
 		}
 		else;
-	}
+	}*/
  }	
 }
 //Управление вибратором-----------------------------------
@@ -333,14 +333,43 @@ if (kt>=lenans) /* ответ пришёл правильный */
 //Установка активности извести----------------------------
 void setIzvActivity(float val){
 	 curentIzvestActivity=val;
+	 Print("\r\n Set activity izvest: - %f",curentIzvestActivity);
 }
 //Установка молотовяжущего--------------------------------
 void setMV(float val){
      curentMV=val;
+	 Print("\r\n Set MV:%f ",curentMV);
 }
 //Установка производительности----------------------------
 void setPerfomance(float val){
      neededPerfomanceSummary=val;
+     Print("\r\n Set Summary:%f ",neededPerfomanceSummary);
+}
+//Установка автоматичсеского режима----------------------------
+void setAutomaticMode(){
+     workmode = 0;
+	 Print("\r\n Set AUTOMATIC MODE");
+}
+//Установка ручного режима----------------------------
+void setManualMode(){
+     workmode = 1;
+	 Print("\r\n Set MANUAL MODE");
+}
+//Установка производительности извести----------------------------
+void setPerfomanceIzvest(float val){
+	 //int error;
+	 //error = setDozator(adrDoz1, val);
+     //if(error==0)		statusDozator1=0;//записалось
+	 //else				statusDozator1=2;//не записалось
+	 Print("\r\n Set perfomance IZVEST:%f ",val);
+}
+//Установка производительности песка----------------------------
+void setPerfomanceSand(float val){
+     //int error;
+	 //error = setDozator(adrDoz2, val);
+     //if(error==0)		statusDozator2=0;//записалось
+	 //else				statusDozator2=2;//не записалось
+	 Print("\r\n Set perfomance SAND:%f ",val);
 }
 //-------------Отправка данных на АРМ---------------------
 void sendDataEth(int current_socket){
@@ -352,17 +381,17 @@ tmpbuf.tmpstruct.start[2]=1;
 tmpbuf.tmpstruct.start[3]=1;
 tmpbuf.tmpstruct.start[4]=1;
 tmpbuf.tmpstruct.data[0]=workmode;//workmode
-tmpbuf.tmpstruct.data[1]=curentPerfIzvest;//текущая производительность извести
-tmpbuf.tmpstruct.data[2]=oldPerfIzvest;//вычисленная производительность извести
+tmpbuf.tmpstruct.data[1]=3.2;//curentPerfIzvest;//текущая производительность извести
+tmpbuf.tmpstruct.data[2]=3.3;//setPerfIzvest;//вычисленная производительность извести
 tmpbuf.tmpstruct.data[3]=curentIzvestActivity;//активность извести
-tmpbuf.tmpstruct.data[4]=curentPerfSand;//текущая производительность песка
-tmpbuf.tmpstruct.data[5]=oldPerfSand;//вычисленная производительность песка
-tmpbuf.tmpstruct.data[6]=curentMV;//Молото вяжущее
-tmpbuf.tmpstruct.data[7]=statusDozator1;//Статус дозатора извести
-tmpbuf.tmpstruct.data[8]=statusDozator2;//Статус дозатора песка
-tmpbuf.tmpstruct.data[9]=curentPerfomanceSummary;//текущая производительность
-tmpbuf.tmpstruct.data[10]=neededPerfomanceSummary;//уставка производительности
-tmpbuf.tmpstruct.data[11]=vibro;//Вибратор
+tmpbuf.tmpstruct.data[4]=3.5;//curentPerfSand;//текущая производительность песка
+tmpbuf.tmpstruct.data[5]=3.7;//setPerfSand;//вычисленная производительность песка
+tmpbuf.tmpstruct.data[6]=35;//curentMV;//Молото вяжущее
+tmpbuf.tmpstruct.data[7]=0;//statusDozator1;//Статус дозатора извести
+tmpbuf.tmpstruct.data[8]=1;//statusDozator2;//Статус дозатора песка
+tmpbuf.tmpstruct.data[9]=7.5;//curentPerfomanceSummary;//текущая производительность
+tmpbuf.tmpstruct.data[10]=7.6;//neededPerfomanceSummary;//уставка производительности
+tmpbuf.tmpstruct.data[11]=0;//vibro;//Вибратор
 
 
 for(i=0;i<53;i++){
@@ -400,16 +429,25 @@ void analizDataEth(char *buf,int len_buf, int current_socket){
 	   }
 	Print("Simbol=%d\r\n",answertmpbuf.tmpstruct.i_command);
 	switch (answertmpbuf.tmpstruct.i_command){
-		case 'i':setIzvActivity(answertmpbuf.tmpstruct.value); 
+		case 105:setIzvActivity(answertmpbuf.tmpstruct.value);//i
+			 Print("\r\n activity recvd: %f",answertmpbuf.tmpstruct.value); 
 			 break;
-		case 'r':sendDataEth(current_socket); 
+		case 114:sendDataEth(current_socket);//r 
              break;
-		case 'm':setMV(answertmpbuf.tmpstruct.value); 
+		case 109:setMV(answertmpbuf.tmpstruct.value);//m 
              break;
- 		case 'p':setPerfomance(answertmpbuf.tmpstruct.value); 
+ 		case 112:setPerfomance(answertmpbuf.tmpstruct.value);//p 
              break;
-		case 99:calculateWork();            
+		case 99:calculateWork();//c            
              break;
+		case 97:setAutomaticMode();//a
+			 break;
+		case 98:setManualMode();//b
+			 break;
+		case 101:setPerfomanceIzvest(answertmpbuf.tmpstruct.value);//e
+			 break;
+		case 115:setPerfomanceSand(answertmpbuf.tmpstruct.value);//s
+			 break;
         default  : error=1;break;
      } 
 }
@@ -439,12 +477,12 @@ void netWork(int current_socket){
 //Актив. М-В(%)/Актив.Извести(%)*Производительность(т.ч)=Дозировка извести(т.ч)
 //Дозировка песка = Производительность - Дозировка извести (т.ч)
 void calculateWork(){
-	 int error1, error2;
-//++? curentIzvestActivity==0
+	 //int error1, error2;
 	 if(curentIzvestActivity==0)curentIzvestActivity=1;
 	 calcPerfIzvest = (curentMV/curentIzvestActivity)*neededPerfomanceSummary;
 	 calcPerfSand = neededPerfomanceSummary-calcPerfIzvest;
-	 error1 = setDozator(adrDoz1, calcPerfIzvest);
+	 Print("\r\n Calc is accepted izvest:%d :: Sand:%d",calcPerfIzvest,calcPerfSand);
+	 /*error1 = setDozator(adrDoz1, calcPerfIzvest);
 	 error2 = setDozator(adrDoz2, calcPerfSand);
 	 if(error1==0){
 	 	  statusDozator1=0;
@@ -453,11 +491,11 @@ void calculateWork(){
      	  statusDozator1=2; 
 	 }
 	 if(error2==0){
-	 	  statusDozator1=0;
+	 	  statusDozator2=0;
 	 			   }
 	 else{
-     	  statusDozator1=2; 
-	 }
+     	  statusDozator2=2; 
+	 }*/
 }
 
 //-----------------------------------------------------------------------------
