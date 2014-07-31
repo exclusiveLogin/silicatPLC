@@ -3,10 +3,10 @@
 #define Stop(NumTimer)      timers_action[NumTimer]=0;                                                                                   // Останов таймера
 
 union{	//ОТВЕТ НА АРМ
-   		 unsigned char buf[53];
+   		 unsigned char buf[61];
    		 struct{
 		 		unsigned char start[5];//5
-				float         data[12];//48 bytes
+				float         data[14];//56 bytes
 		 }tmpstruct;
    }tmpbuf;
 
@@ -20,26 +20,36 @@ union{	// СЮДА ЗАПИСАЛИ ИНФОРМАЦИЮ
 	}answertmpbuf; 
 
 float workmode;
-float curentPerfIzvest;
-float calcPerfIzvest;
-float curentPerfSand;
-float calcPerfSand;
-float curentMV;
-float curentIzvestActivity;
-float curentPerfomanceSummary;
-float neededPerfomanceSummary;
-float vibro;
-float setPerfIzvest;
-float setPerfSand;
+
+float curentPerfIzvest;//Сколько сыпет извести Сейчас
+float curentPerfSand;//Сколько сыпет песка Сейчас
+float curentPerfomanceSummary;//ФАКТ текущей производительности известь + песок
+
+float calcPerfIzvest;//Расчет сколько СЫПАТЬ извести 
+float calcPerfSand;//Расчет сколько СЫПАТЬ песка
+
+float curentMV;//Установленное значение молото вяжущего
+float curentIzvestActivity;//Установленное значение активности извести
+float neededPerfomanceSummary;//Установленное значение производительности 
+
+float setPerfIzvest;//Установленное значение производительности извести
+float setPerfSand;//Установленное значение производительности песка
+
 int stack;
-int adrDoz1;
-int adrDoz2;
-int firststartdoz;
-int statusDozator1;
-int statusDozator2;
-int status[4];
-int countFCD;
+
+int adrDoz1;//Адрес 1 дозатора
+int adrDoz2;//Адрес 2 дозатора
+int firststartdoz;//Флаг первого запуска
+int statusDozator1;//Статус 1 дозатора
+int statusDozator2;//Статус 2 дозатора 0-norm 1-stop 2-error 10-sand blocked
+int status[5];//4-doz zadanie 5-status sand
+//int countFCD;
+
+float vibro;
 int vibrotimer;
+
+int sandBlocked;
+int vibrocounter;
 
 unsigned int CRC16(unsigned char *Data, unsigned int size);
 void  firstRunCheck(void);

@@ -17,7 +17,7 @@ unsigned short service_port[NUM_OF_SERVICE_PORT]={10000, 502};
 int            socketPort[MaxClentSocket];
 unsigned int  count_cikl=0;
 int answer_to_modbus_tcp(char *bufer, int lenbuf);
-status[4]={0,0,0,0};//статус запросов 
+status[5]={0,0,0,0,0};//статус запросов 
 
 //Инициализация функций 
 /* ============== Расчёт контрольной суммы по алгоритму  CRC16 =====*/
@@ -68,9 +68,8 @@ void  firstRunCheck(){//опрос дозаторов при первом запуске
 void checkSystem(){
 float tmp;
 int pc=0;
-if (firststartdoz==0)
-{
- Print("\r\nOK=%d,%d",stack,pc);
+if (firststartdoz==0){
+   Print("\r\nOK=%d,%d",stack,pc);
  /*switch(stack){
  	    case 0:while (pc<3)
 				{
@@ -114,41 +113,54 @@ if (firststartdoz==0)
 					}
 				pc++;
 				}
+	   		   stack++;
+		  	   break;
+	   //---------------Status System------------------------------
+	   case 4:while (pc<3)
+				{
+				tmp = getDozator(adrDoz2, 3, &status[4]);
+				if(status[4]==0) {
+					if(tmp == 9)   statusDozator2 = 10;
+					Print("\r\nSAND BLOCKED");
+					break; 
+					}
+				pc++;
+				}
 	   		   stack=0;
 		  	   break;
 	}
   if((status[0]==1)||(status[1]==1))statusDozator1 = 2;
   else statusDozator1 = 0;
   if((status[2]==1)||(status[3]==1))statusDozator2 = 2;
-  else statusDozator2 = 0;
+  else statusDozator2 = 0;*/
+  
   curentPerfomanceSummary = curentPerfSand + curentPerfIzvest;//++++++
-
-   if(statusDozator2==0){//Если данные считались верно
-		if(curentPerfSand<calcPerfSand*0.5){// и тем не менее не соотвествуют заданию даже на 50% 
-			    if(Act(1)){//если уже запущен то пропуск если нет то запускаем
-
-		  				}
-				else{
-      				Run(1);//Запускаем на 20 секунд
-					vibrotimer=1;//знак что запускаем таймер ожидания
-	 				} 										
+  //-------------Проверка залипания
+  if(statusDozator2==10){
+  		Print("\r\nNEDOBOR");
+		sandBlocked = 1;//Флаг блокировки песка	
+  		}
+	else{
+		 sandBlocked = 0;
 		}
-		else;
-	}*/
  }	
 }
 //Управление вибратором-----------------------------------
 void vibroToggle(int command){
 	 SetPioDir(1,0);
-	 if(command==1){
-          vibro = 1;
-	 	  Print("\r\nVibro started on 5 second");
-		  SetPio(1,1);
-	 }
-	 else{
-          vibro = 0;
-		  Print("\r\nVibro stopped");
-          SetPio(1,0);
+	 switch (command){
+	 		case 0:
+                   vibro = 0;
+		  		   Print("\r\nVibro stopped");
+          		   SetPio(1,0);
+				   break;
+			case 1:
+				   vibro = 1;
+	 	  		   Print("\r\nVibro started on 5 second");
+		  		   SetPio(1,1);
+				   break;
+			default:
+					break;
 	 }
 }
 //-------------Опрос дозатора---------------------
@@ -187,7 +199,15 @@ switch (NumCom)
            command[4]=0x00;
            command[5]=0x02; //49;
            CountBytes=6;
-   break;
+   		   break;
+   case 3: command[0]=NumDVL;//индикация состояния
+           command[1]=0x03;
+           command[2]=0x00;
+           command[3]=0x23; //35;
+           command[4]=0x00;
+           command[5]=0x01; //один регистр;
+           CountBytes=6;
+   		   break;
   }
 
  crc=CRC16(command,CountBytes);
@@ -206,7 +226,8 @@ ClearCom(2);
     if (IsTxBufEmpty(2))
      {
       Answer[kt]=ReadCom(2);
-      kt++;if (kt>=lenans) break;
+      kt++;
+	  if (kt>=lenans) break;
      }
    pop++;
   }
@@ -219,15 +240,21 @@ if (lenans==kt) /* ответ пришёл правильный */
 	  
 	  switch (NumCom)
       {
-       case 1: case 2: /* ответ о производительности */ 
-	   		*status=0; 
+       case 1: case 2: // ответ о производительности 
 	   		ddata.byte[3]=Answer[3];
    			ddata.byte[2]=Answer[4];
    			ddata.byte[1]=Answer[5];
    			ddata.byte[0]=Answer[6];
 			*status = 0;
 			Print("NumCom=%d(%f)",NumCom,ddata.val * 0.01);
-   			return ddata.val * 0.01;	   
+   			return ddata.val * 0.01;
+			break;
+	   /*case 3://ответ о состоянии системы  
+	   		ddata.byte[0]=Answer[3];
+			*status = 0;
+			Print("Status System=%d",ddata.byte[0]);
+   			return ddata.byte[0];
+			break;*/	   
       }
      *status = 1;
     }
@@ -382,22 +409,24 @@ tmpbuf.tmpstruct.start[3]=1;
 tmpbuf.tmpstruct.start[4]=1;
 tmpbuf.tmpstruct.data[0]=workmode;//workmode
 tmpbuf.tmpstruct.data[1]=3.2;//curentPerfIzvest;//текущая производительность извести
-tmpbuf.tmpstruct.data[2]=3.3;//setPerfIzvest;//вычисленная производительность извести
+tmpbuf.tmpstruct.data[2]=calcPerfIzvest;//вычисленная производительность извести
 tmpbuf.tmpstruct.data[3]=curentIzvestActivity;//активность извести
 tmpbuf.tmpstruct.data[4]=3.5;//curentPerfSand;//текущая производительность песка
-tmpbuf.tmpstruct.data[5]=3.7;//setPerfSand;//вычисленная производительность песка
-tmpbuf.tmpstruct.data[6]=35;//curentMV;//Молото вяжущее
-tmpbuf.tmpstruct.data[7]=0;//statusDozator1;//Статус дозатора извести
-tmpbuf.tmpstruct.data[8]=1;//statusDozator2;//Статус дозатора песка
+tmpbuf.tmpstruct.data[5]=calcPerfSand;//вычисленная производительность песка
+tmpbuf.tmpstruct.data[6]=curentMV;//Молото вяжущее
+tmpbuf.tmpstruct.data[7]=statusDozator1;//Статус дозатора извести
+tmpbuf.tmpstruct.data[8]=statusDozator2;//Статус дозатора песка
 tmpbuf.tmpstruct.data[9]=7.5;//curentPerfomanceSummary;//текущая производительность
-tmpbuf.tmpstruct.data[10]=7.6;//neededPerfomanceSummary;//уставка производительности
-tmpbuf.tmpstruct.data[11]=0;//vibro;//Вибратор
+tmpbuf.tmpstruct.data[10]=neededPerfomanceSummary;//уставка производительности
+tmpbuf.tmpstruct.data[11]=vibro;//Вибратор
+tmpbuf.tmpstruct.data[12]=setPerfIzvest;//Установленная производительность извести
+tmpbuf.tmpstruct.data[13]=setPerfSand;//Установленная производительность песка
 
 
-for(i=0;i<53;i++){
+for(i=0;i<61;i++){
     Print("%d.",tmpbuf.buf[i]);
 	} 
-send(current_socket, tmpbuf.buf, 53, 0);
+send(current_socket, tmpbuf.buf, 61, 0);
 }
 //-------------Анализ данных с АРМ---------------------
 void analizDataEth(char *buf,int len_buf, int current_socket){
@@ -481,7 +510,7 @@ void calculateWork(){
 	 if(curentIzvestActivity==0)curentIzvestActivity=1;
 	 calcPerfIzvest = (curentMV/curentIzvestActivity)*neededPerfomanceSummary;
 	 calcPerfSand = neededPerfomanceSummary-calcPerfIzvest;
-	 Print("\r\n Calc is accepted izvest:%d :: Sand:%d",calcPerfIzvest,calcPerfSand);
+	 Print("\r\n Calc is accepted izvest:%f :: Sand:%f",calcPerfIzvest,calcPerfSand);
 	 /*error1 = setDozator(adrDoz1, calcPerfIzvest);
 	 error2 = setDozator(adrDoz2, calcPerfSand);
 	 if(error1==0){
@@ -513,11 +542,11 @@ void main(void)
 	adrDoz1=0x01;//Поменять	
 	adrDoz2=0x02;//Поменять
 	firststartdoz = 1;
-	timers_duration[1]=20000; 
-	timers_duration[2]=5000;  	 
+	timers_duration[1]=1000;   	 
 	vibro = 0;
-	vibrotimer=0;	
-
+	vibrotimer=0;
+    sandBlocked = 1;//del me
+	vibrocounter = 0;
     	
 	InitLib();
 	TimerOpen();
@@ -556,29 +585,42 @@ void main(void)
 		else
          {
 		  
-		  if ((kcount%15)==0)
-	 	   { Print("CheckSystem");checkSystem(); }//Опрос системы
+		  if ((kcount%15)==0){ 
+		  	 Print("\r\n CheckSystem");checkSystem(); 
+			 }//Опрос системы
 		  kcount++;
 		 }
-		if(Act(1)){ //Проверка отведенного времени
-		     Print("\r\nwaiting...");//ждем
-		}
-		else{
-			 if(vibrotimer==1){ //если таймер был запущен и кончился то..
-			  				  vibroToggle(1);
-			 				  Stop(1);
-			 				  Run(2);
-							  vibrotimer=0;
-							  }			 
-		}
 
-		if(Act(2)){ //Проверка времени вибрации
-		     Print("\r\vibrating...");
-		}
-		else{
+         if(sandBlocked==1){//Если есть залипание
+		 					if((Act(1)==0)&&(vibrotimer==0)){//Если таймер остановлен и не взведен
+            							  Print("\r\n Vibro Start-------------------...ACT=%d counter=%d",Act(1),vibrocounter);
+										  Run(1);
+										  vibrotimer=1;
+										  if(vibrocounter<5)	vibroToggle(1);
+										  vibrocounter++;   
+		 					}
+							else;
+		 }
+		 else{
+			 //восстанавливаем счетчики и останавливаем вибратор принудительно 
+			 Stop(1);
+			 vibrotimer = 0;
+			 vibrocounter = 0;
 			 vibroToggle(0);
-			 Stop(2);
-			 }
+		 }
+
+
+		 if((Act(1)==0)&&(vibrotimer==1)){//Если таймер остановлен и взведен
+         	Print("\r\n Vibro STOP  ---------------------ACT=%d",Act(1));
+			vibrotimer = 0;
+			Stop(1);
+			Run(1);
+			vibroToggle(0);							  
+		 }
+		 else;
+		 
+
+
 
 		YIELD();
 		//Step 3-1: Wait for activity on sockets and accept a connection
