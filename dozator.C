@@ -542,10 +542,9 @@ void main(void)
 	adrDoz1=0x01;//Поменять	
 	adrDoz2=0x02;//Поменять
 	firststartdoz = 1;
-	timers_duration[1]=1000;   	 
+	timers_duration[1]=5000;   	 
 	vibro = 0;
 	vibrotimer=0;
-    sandBlocked = 1;//del me
 	vibrocounter = 0;
     	
 	InitLib();
@@ -597,7 +596,9 @@ void main(void)
 										  Run(1);
 										  vibrotimer=1;
 										  if(vibrocounter<5)	vibroToggle(1);
-										  vibrocounter++;   
+										  vibrocounter++;
+										  //if(vibrocounter == 3) sandBlocked = 0;//Delete this
+										  if(vibrocounter>5)	vibrocounter=5;   
 		 					}
 							else;
 		 }
@@ -606,7 +607,7 @@ void main(void)
 			 Stop(1);
 			 vibrotimer = 0;
 			 vibrocounter = 0;
-			 vibroToggle(0);
+			 if(vibro)	vibroToggle(0);
 		 }
 
 
