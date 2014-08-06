@@ -35,7 +35,7 @@ float neededPerfomanceSummary;//”становленное значение производительности
 float setPerfIzvest;//”становленное значение производительности извести
 float setPerfSand;//”становленное значение производительности песка
 
-int stack;
+int stack;//дл€ поочередного опроса системы
 
 int adrDoz1;//јдрес 1 дозатора
 int adrDoz2;//јдрес 2 дозатора
@@ -46,10 +46,10 @@ int status[5];//4-doz zadanie 5-status sand
 //int countFCD;
 
 float vibro;
-int vibrotimer;
+int vibrotimer;//вибратор взведен 
 
-int sandBlocked;
-int vibrocounter;
+int sandBlocked;//залипание песка 0-нет 1- есть
+int vibrocounter;//счетчик попыток вибратора
 
 unsigned int CRC16(unsigned char *Data, unsigned int size);
 void  firstRunCheck(void);
