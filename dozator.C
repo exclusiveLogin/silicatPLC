@@ -64,12 +64,12 @@ void  firstRunCheck(){//опрос дозаторов при первом запуске
 	}//firststartdoz=0;//delete me
 }
 
-//------------Анали состояния системы--------------------
+//------------Анализ состояния системы--------------------
 void checkSystem(){
 float tmp;
 int pc=0;
 if (firststartdoz==0){
- Print("\r\nOK=%d,%d",stack,pc);
+ //Print("\r\nOK=%d,%d",stack,pc);
  switch(stack){
  	    case 0:while (pc<5)
 				{
@@ -119,7 +119,7 @@ if (firststartdoz==0){
 	   case 4:while (pc<2)
 				{
 				tmp = getDozator(adrDoz2, 3, &status[4]);
-                Print("\r\n tmp= %d", tmp);//delete me
+                //Print("\r\n tmp= %d", tmp);//delete me
 				if(status[4]==0) {
 					if(tmp == 9)   statusDozator2 = 10;
 					Print("\r\nSAND BLOCKED");
@@ -153,12 +153,12 @@ void vibroToggle(int command){
 	 		case 0:
                    vibro = 0;
 		  		   Print("\r\nVibro stopped");
-          		   SetPio(1,0);
+          		   outportb(0,0);
 				   break;
 			case 1:
 				   vibro = 1;
 	 	  		   Print("\r\nVibro started on 5 second");
-		  		   SetPio(1,1);
+		  		   outportb(0,1);
 				   break;
 			default:
 					break;
@@ -258,10 +258,11 @@ if (lenans==kt) /* ответ пришёл правильный */
    			return ddata.val * 0.01;
 			break;
 	   case 3://ответ о состоянии системы  
-	   		ddata.byte[0]=Answer[3];
+	   		ddata.byte[1]=Answer[3];
+            ddata.byte[0]=Answer[4];
 			*status = 0;
-			Print("Status System=%d",ddata.byte[0]);
-   			return ddata.byte[0];
+			Print("Status System=%d",ddata.val);
+   			return ddata.val;
 			break;	   
       }
      *status = 1;
@@ -607,7 +608,10 @@ void main(void)
 										  if(vibrocounter<5)	vibroToggle(1);
 										  vibrocounter++;
 										  //if(vibrocounter == 3) sandBlocked = 0;//Delete this
-										  if(vibrocounter>5)	vibrocounter=5;   
+										  if(vibrocounter>5){
+                                                vibrocounter=5; 
+                                                sandBlocked=0;
+										  }	  
 		 					}
 							else;
 		 }

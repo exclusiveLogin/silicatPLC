@@ -45,7 +45,7 @@ int statusDozator2;//Статус 2 дозатора 0-norm 1-stop 2-error 10-sand blocked
 int status[5];//4-doz zadanie 5-status sand
 //int countFCD;
 
-float vibro;
+int vibro;
 int vibrotimer;//вибратор взведен 
 
 int sandBlocked;//залипание песка 0-нет 1- есть
