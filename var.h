@@ -39,22 +39,24 @@ int stack;//для поочередного опроса системы
 
 int adrDoz1;//Адрес 1 дозатора
 int adrDoz2;//Адрес 2 дозатора
-int firststartdoz;//Флаг первого запуска
+int ffirststartdoz;//Флаг первого запуска
 int statusDozator1;//Статус 1 дозатора
 int statusDozator2;//Статус 2 дозатора 0-norm 1-stop 2-error 10-sand blocked
 int status[5];//4-doz zadanie 5-status sand
 //int countFCD;
 
-float vibro;
-int vibrotimer;//вибратор взведен 
+int vibro;
+//int vibrotimer;//вибратор взведен 
 
-int sandBlocked;//залипание песка 0-нет 1- есть
-int vibrocounter;//счетчик попыток вибратора
+int sandBlocked1;//залипание известь 0-нет 1- есть
+int sandBlocked2;//залипание песка   0-нет 1- есть
+int vibrocounter1;//счетчик попыток вибратора извести
+int vibrocounter2;//счётчик попыток вибратора песка 
 
 unsigned int CRC16(unsigned char *Data, unsigned int size);
 void  firstRunCheck(void);
 void checkSystem(void);
-void vibroToggle(int command);
+void vibroToggle(unsigned char command);
 float getDozator(int NumDVL, int NumCom, int *status);
 int setDozator(int adrDevice, float newVal);
 void setIzvActivity(float val);
@@ -71,6 +73,10 @@ void setPerfomanceSand(float val);
 
 
 //Таймеры
-unsigned char timers_action[2]; 
-unsigned long timers_duration[2];
-unsigned long timers_time_run[2];
+// 0 - таймер извести: общая продолжтельность работы вибратора
+// 1 - таймер извести: период непрерывной работы вибратора
+// 2 - таймер песка  : общая продолжительность работы вибратора
+// 3 - таймер песка  : период непрерывной работы вибратора
+unsigned char timers_action[4]; 
+unsigned long timers_duration[4];
+unsigned long timers_time_run[4];

@@ -18,7 +18,7 @@ int            socketPort[MaxClentSocket];
 unsigned int  count_cikl=0;
 int answer_to_modbus_tcp(char *bufer, int lenbuf);
 status[5]={0,0,0,0,0};//статус запросов 
-
+float getDozator(int NumDVL, int NumCom, int *status);
 //Инициализация функций 
 /* ============== Расчёт контрольной суммы по алгоритму  CRC16 =====*/
 unsigned int CRC16(unsigned char *Data, unsigned int size)
@@ -56,20 +56,22 @@ void  firstRunCheck(){//опрос дозаторов при первом запуске
 	}
    if((status[0]==0)&&(status[1]==0)&&(status[2]==0)&&(status[3]==0))
     {
-	 firststartdoz=0;stack=0;Print("\r\nNOT FIRSTDOZATOR");
+	 ffirststartdoz=0;stack=0;Print("\r\nNOT FIRSTDOZATOR");
 	}
    else
     {
-	firststartdoz = 1;
+ 	  ffirststartdoz = 1;
 	}//firststartdoz=0;//delete me
 }
 
-//------------Анали состояния системы--------------------
+//------------Анализ состояния системы--------------------
 void checkSystem(){
 float tmp;
 int pc=0;
-if (firststartdoz==0){
- Print("\r\nOK=%d,%d",stack,pc);
+static int stack=0;
+/*if (ffirststartdoz==0)*/{
+ //Print("\r\nOK=%d,%d",stack,pc);
+ Print("\r\n CheckSystem=%d", stack);
  switch(stack){
  	    case 0:while (pc<5)
 				{
@@ -116,53 +118,75 @@ if (firststartdoz==0){
 	   		   stack++;
 		  	   break;
 	   //---------------Status System------------------------------
-	   case 4:while (pc<2)
+	   case 4:/*while (pc<2)
 				{
 				tmp = getDozator(adrDoz2, 3, &status[4]);
-                Print("\r\n tmp= %d", tmp);//delete me
+                //Print("\r\n tmp= %d", tmp);//delete me
 				if(status[4]==0) {
 					if(tmp == 9)   statusDozator2 = 10;
 					Print("\r\nSAND BLOCKED");
 					break; 
 					}
 				pc++;
+				}  */
+			   if (setPerfIzvest>0)
+				{
+                 if (curentPerfIzvest/setPerfIzvest<0.75) statusDozator1 = 2;
+				 else statusDozator1 = 0;
 				}
+			   else  statusDozator1 = 0;
+			   if (setPerfSand>0)
+                {
+				  if (curentPerfSand/setPerfSand<0.75) statusDozator2 =2;
+				  else statusDozator2 = 0;
+				}
+			   else statusDozator2 = 0;
 	   		   stack=0;
 		  	   break;
 	}
-  if((status[0]==1)||(status[1]==1))statusDozator1 = 2;
+/*  if((status[0]==1)||(status[1]==1))statusDozator1 = 2;
   else statusDozator1 = 0;
   if((status[2]==1)||(status[3]==1))statusDozator2 = 2;
-  else statusDozator2 = 0;//__
+  else statusDozator2 = 0;//__*/
   
   curentPerfomanceSummary = curentPerfSand + curentPerfIzvest;//++++++
   //-------------Проверка залипания
-  if(statusDozator2==10){
-  		Print("\r\nNEDOBOR");
-		sandBlocked = 1;//Флаг блокировки песка	
+   if (stack==0)
+   {
+  if (statusDozator1==2){
+  		Print("\r\nNEDOBOR1");
+		sandBlocked1 = 1;//Флаг блокировки песка	
   		}
 	else{
-		 sandBlocked = 0;
+		 sandBlocked1 = 0;
 		}
- }	
+  if(statusDozator2==2){
+  		Print("\r\nNEDOBOR2");
+		sandBlocked2 = 1;//Флаг блокировки песка	
+  		}
+	else{
+		 sandBlocked2 = 0;
+		}
+ }	}
 }
 //Управление вибратором-----------------------------------
-void vibroToggle(int command){
-	 SetPioDir(1,0);
+void vibroToggle(unsigned char command){
+   outportb(0,command);
+	/* SetPioDir(1,0);
 	 switch (command){
 	 		case 0:
                    vibro = 0;
 		  		   Print("\r\nVibro stopped");
-          		   SetPio(1,0);
+          		   outportb(0,0);
 				   break;
 			case 1:
 				   vibro = 1;
 	 	  		   Print("\r\nVibro started on 5 second");
-		  		   SetPio(1,1);
+		  		   outportb(0,1);
 				   break;
 			default:
 					break;
-	 }
+	 } */
 }
 //-------------Опрос дозатора---------------------
 float getDozator(int NumDVL, int NumCom, int *status){
@@ -179,7 +203,7 @@ float getDozator(int NumDVL, int NumCom, int *status){
 union
   {
    unsigned long val;
-   float sf;
+  //8 float sf;
    unsigned char byte[4];
   } ddata; 
 
@@ -256,13 +280,14 @@ if (lenans==kt) /* ответ пришёл правильный */
 			*status = 0;
 			Print("NumCom=%d(%f)",NumCom,ddata.val * 0.01);
    			return ddata.val * 0.01;
-			break;
+	//		break;
 	   case 3://ответ о состоянии системы  
-	   		ddata.byte[0]=Answer[3];
+	   		ddata.byte[1]=Answer[3];
+            ddata.byte[0]=Answer[4];
 			*status = 0;
-			Print("Status System=%d",ddata.byte[0]);
-   			return ddata.byte[0];
-			break;	   
+			Print("Status System=%d",ddata.val);
+   			return ddata.val;
+//			break;	   
       }
      *status = 1;
     }
@@ -294,7 +319,7 @@ int setDozator(int adrDevice, float newVal){
 union{
 	 long value;//4 byte //++? float
 	 char byte[4];
-	 float f;
+//	 float f;
 }val;
 
 command[0]=adrDevice;                //
@@ -426,7 +451,7 @@ tmpbuf.tmpstruct.data[7]=statusDozator1;//Статус дозатора извести
 tmpbuf.tmpstruct.data[8]=statusDozator2;//Статус дозатора песка
 tmpbuf.tmpstruct.data[9]=curentPerfomanceSummary;//текущая производительность
 tmpbuf.tmpstruct.data[10]=neededPerfomanceSummary;//уставка производительности
-tmpbuf.tmpstruct.data[11]=vibro;//Вибратор
+tmpbuf.tmpstruct.data[11]=vibro;//++?Вибратор
 tmpbuf.tmpstruct.data[12]=setPerfIzvest;//Установленная производительность извести
 tmpbuf.tmpstruct.data[13]=setPerfSand;//Установленная производительность песка
 
@@ -545,16 +570,21 @@ void main(void)
 	int clientAddLen;
 	int new_con,i,c,err;
 	int s[2];
+	int upr_code=0;
 	unsigned int kcount=0;
     status[0]=1;status[1]=1;status[2]=1;status[3]=1;
 	stack = 0;
 	adrDoz1=0x02;//ИЗВЕСТЬ	
 	adrDoz2=0x01;//ПЕСОК
-	firststartdoz = 1;
-	timers_duration[1]=5000;   	 
-	vibro = 0;
-	vibrotimer=0;
-	vibrocounter = 0;
+	ffirststartdoz = 1;  // устанавливаем флаг первого запуска
+	timers_duration[0]=30000;  // вибрировать 30 секунд.
+	timers_duration[1]= 5000;  // по 5 секунд. 	 
+	timers_duration[2]=30000;  // вибрировать 30 секунд.
+	timers_duration[3]= 5000;  // по 5 секунд. 	 
+//	vibro = 0;
+//	vibrotimer=0;
+	vibrocounter1 = 0;
+	vibrocounter2 = 0;
     	
 	InitLib();
 	TimerOpen();
@@ -587,19 +617,89 @@ void main(void)
 	for(;;)
 	{
 		
-        if(firststartdoz==1){     //проверка первого запуска	
+        if(ffirststartdoz==1){     //проверка первого запуска	
         		firstRunCheck();              	 	
 		}
 		else
          {
 		  
 		  if ((kcount%15)==0){ 
-		  	 Print("\r\n CheckSystem");checkSystem(); 
+		  	  checkSystem(); 
 			 }//Опрос системы
 		  kcount++;
 		 }
+		// БЛОК ВИБРИРОВАНИЯ ПО ИЗВЕСТИ
+		if (((sandBlocked1==1)&&(vibrocounter1==0))||(Act(0))) // залипание извести или не обработан таймер общего вибрирования
+		 {
+		   if (vibrocounter1==0) // первое залипание
+            {
+			 vibrocounter1=1;
+			 Run(0);  Run(1);  // запуск таймеров
+			}
+		   else
+			{
+              if (Act(0)) // не истёк общий таймер вибрирования
+               {
+				if (Act(1)) // не истек таймер непрерыного вибрирования
+				 ;
+				else // истёк таймер непрерывного вибрирования)
+				 {
+				  vibrocounter1++;
+				  Stop(1);// Повторный запуск если не исчезло залипание
+                  if (sandBlocked1==1) Run(1);
+				 }
+			   }
+			  else // истёк общий тамер вибрирования
+			   {
+				 Stop(0); // остановить таймер вибрированя
+				 Stop(1); // остановить тамер непрерывного вибрирования
+			   }
+			}
+		 }
+		else if (sandBlocked1==0) // нет залипания вибрирование помогло
+		 {
+		  vibrocounter1=0;
+	 	 }
+		 // БЛОК ВИБРИРОВАНИЯ ПО ПЕСКУ
+		if (((sandBlocked2==1)&&(vibrocounter2==0))||(Act(2))) // залипание песка или не обработан таймер общего вибрирования
+		 {
+		   if (vibrocounter2==0) // первое залипание
+            {
+			 vibrocounter2=1;
+			 Run(2);  Run(3);  // запуск таймеров
+			}
+		   else
+			{
+              if (Act(2)) // не истёк общий таймер вибрирования
+               {
+				if (Act(3)) // не истек таймер непрерыного вибрирования
+				 ;
+				else // истёк таймер непрерывного вибрирования)
+				 {
+				  vibrocounter2++;
+				  Stop(3);// Повторный запуск если не исчезло залипание
+                  if (sandBlocked2==1) Run(3);
+				 }
+			   }
+			  else // истёк общий тамер вибрирования
+			   {
+				 Stop(2); // остановить таймер вибрированя
+				 Stop(3); // остановить тамер непрерывного вибрирования
+			   }
+			}
+		 }
+		else if (sandBlocked2==0) // нет залипания вибрирование помогло
+		 {
+		  vibrocounter2=0;
+	 	 }
+		upr_code=12;vibro=0;   //++?
+		if ((Act(1))&&(vibrocounter1%2==1)) { upr_code=upr_code+1;vibro=1; }
+		if ((Act(3))&&(vibrocounter2%2==1)) { upr_code=upr_code+2;vibro=1; }
+		if (vibro==1) Print("\r\nWKL %d",upr_code); 
+        vibroToggle(upr_code);
 
-         if(sandBlocked==1){//Если есть залипание
+
+/*         if(sandBlocked1==1){//Если есть залипание 
 		 					if((Act(1)==0)&&(vibrotimer==0)){//Если таймер остановлен и не взведен
             							  Print("\r\n Vibro Start-------------------...ACT=%d counter=%d",Act(1),vibrocounter);
 										  Run(1);
@@ -607,7 +707,10 @@ void main(void)
 										  if(vibrocounter<5)	vibroToggle(1);
 										  vibrocounter++;
 										  //if(vibrocounter == 3) sandBlocked = 0;//Delete this
-										  if(vibrocounter>5)	vibrocounter=5;   
+										  if(vibrocounter>5){
+                                                vibrocounter=5; 
+                                                sandBlocked=0;
+										  }	  
 		 					}
 							else;
 		 }
@@ -628,7 +731,7 @@ void main(void)
 			vibroToggle(0);							  
 		 }
 		 else;
-		 
+		*/ 
 
 
 
