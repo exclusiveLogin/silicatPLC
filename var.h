@@ -46,7 +46,11 @@ int status[5];//4-doz zadanie 5-status sand
 //int countFCD;
 
 int vibro;
+<<<<<<< HEAD
 //int vibrotimer;//вибратор взведен 
+=======
+int vibrotimer;//вибратор взведен 
+>>>>>>> origin/master
 
 int sandBlocked1;//залипание известь 0-нет 1- есть
 int sandBlocked2;//залипание песка   0-нет 1- есть

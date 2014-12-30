@@ -68,10 +68,15 @@ void  firstRunCheck(){//опрос дозаторов при первом запуске
 void checkSystem(){
 float tmp;
 int pc=0;
+<<<<<<< HEAD
 static int stack=0;
 /*if (ffirststartdoz==0)*/{
  //Print("\r\nOK=%d,%d",stack,pc);
  Print("\r\n CheckSystem=%d", stack);
+=======
+if (firststartdoz==0){
+ //Print("\r\nOK=%d,%d",stack,pc);
+>>>>>>> origin/master
  switch(stack){
  	    case 0:while (pc<5)
 				{
@@ -287,7 +292,11 @@ if (lenans==kt) /* ответ пришёл правильный */
 			*status = 0;
 			Print("Status System=%d",ddata.val);
    			return ddata.val;
+<<<<<<< HEAD
 //			break;	   
+=======
+			break;	   
+>>>>>>> origin/master
       }
      *status = 1;
     }
