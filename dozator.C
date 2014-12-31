@@ -171,22 +171,7 @@ static int stack=0;
 }
 //Управление вибратором-----------------------------------
 void vibroToggle(unsigned char command){
-   outportb(0,command);
-	/* SetPioDir(1,0);
-	 switch (command){
-	 		case 0:
-                   vibro = 0;
-		  		   Print("\r\nVibro stopped");
-          		   outportb(0,0);
-				   break;
-			case 1:
-				   vibro = 1;
-	 	  		   Print("\r\nVibro started on 5 second");
-		  		   outportb(0,1);
-				   break;
-			default:
-					break;
-	 } */
+	 outportb(0,command);
 }
 //-------------Опрос дозатора---------------------
 float getDozator(int NumDVL, int NumCom, int *status){
@@ -581,16 +566,21 @@ void main(void)
 	timers_duration[1]= 5000;  // по 5 секунд. 	 
 	timers_duration[2]=30000;  // вибрировать 30 секунд.
 	timers_duration[3]= 5000;  // по 5 секунд. 	 
-//	vibro = 0;
+	vibro = 0;
 //	vibrotimer=0;
 	vibrocounter1 = 0;
 	vibrocounter2 = 0;
+	sandBlocked1=1; //del
+	sandBlocked2=1; //del
+	vibroLock1 = 0;
+	vibroLock2 = 0;
+	
     	
 	InitLib();
 	TimerOpen();
     InstallCom(2,19200L,8,0,1)    ;
 	Print("\r\n Ј 1: €­ЁжЁ «Ё§ жЁп TCP бҐаўҐа !");                  /* инициализация */
-	err=NetStart();
+	//err=NetStart();
 	if(err<0)
 	{
 		Print("\n\rЋиЁЎЄ  Ё­ЁжЁ «Ё§ жЁЁ TCP бҐаўҐа ");
@@ -616,8 +606,15 @@ void main(void)
 	//setDozator(1,3.5);
 	for(;;)
 	{
-		
-        if(ffirststartdoz==1){     //проверка первого запуска	
+		if(Kbhit() && Getch()=='q')//Выход по Esc
+		{
+			Nterm();
+            RestoreCom(2);
+			TimerClose(); 
+			return;
+		} 
+
+        /*if(ffirststartdoz==1){     //проверка первого запуска	
         		firstRunCheck();              	 	
 		}
 		else
@@ -627,8 +624,31 @@ void main(void)
 		  	  checkSystem(); 
 			 }//Опрос системы
 		  kcount++;
-		 }
+		 }       */
 		// БЛОК ВИБРИРОВАНИЯ ПО ИЗВЕСТИ
+		vibroTmp = inportb(0);
+		Print("\r\nvibroTmp %d",vibroTmp);
+		/*switch(vibroTmp){
+		case 252:
+			 vibroLock1=1;
+			 vibroLock2=1;
+			 break;
+		case 253:
+			 vibroLock1=1;
+			 break;
+		case 254:
+			 vibroLock2=1;
+			 break;
+		case 255:
+			 vibroLock1=0;
+			 vibroLock2=0;
+			 break;
+		default:
+			 vibroLock1=1;
+			 vibroLock2=1;
+			 break;		
+		}      */
+
 		if (((sandBlocked1==1)&&(vibrocounter1==0))||(Act(0))) // залипание извести или не обработан таймер общего вибрирования
 		 {
 		   if (vibrocounter1==0) // первое залипание
@@ -693,48 +713,15 @@ void main(void)
 		  vibrocounter2=0;
 	 	 }
 		upr_code=12;vibro=0;   //++?
+		if (~vibroTmp&1==1) { Stop(0);Stop(1);vibrocounter1=0;} // блокировка по извести
+		if (~vibroTmp&2==2) { Stop(2);Stop(3);vibrocounter2=0;} // блокировка по песку
 		if ((Act(1))&&(vibrocounter1%2==1)) { upr_code=upr_code+1;vibro=1; }
 		if ((Act(3))&&(vibrocounter2%2==1)) { upr_code=upr_code+2;vibro=1; }
 		if (vibro==1) Print("\r\nWKL %d",upr_code); 
         vibroToggle(upr_code);
 
 
-/*         if(sandBlocked1==1){//Если есть залипание 
-		 					if((Act(1)==0)&&(vibrotimer==0)){//Если таймер остановлен и не взведен
-            							  Print("\r\n Vibro Start-------------------...ACT=%d counter=%d",Act(1),vibrocounter);
-										  Run(1);
-										  vibrotimer=1;
-										  if(vibrocounter<5)	vibroToggle(1);
-										  vibrocounter++;
-										  //if(vibrocounter == 3) sandBlocked = 0;//Delete this
-										  if(vibrocounter>5){
-                                                vibrocounter=5; 
-                                                sandBlocked=0;
-										  }	  
-		 					}
-							else;
-		 }
-		 else{
-			 //восстанавливаем счетчики и останавливаем вибратор принудительно 
-			 Stop(1);
-			 vibrotimer = 0;
-			 vibrocounter = 0;
-			 if(vibro)	vibroToggle(0);
-		 }
-
-
-		 if((Act(1)==0)&&(vibrotimer==1)){//Если таймер остановлен и взведен
-         	Print("\r\n Vibro STOP  ---------------------ACT=%d",Act(1));
-			vibrotimer = 0;
-			Stop(1);
-			Run(1);
-			vibroToggle(0);							  
-		 }
-		 else;
-		*/ 
-
-
-
+		/*----------------------------
 		YIELD();
 		//Step 3-1: Wait for activity on sockets and accept a connection
 		for(i=0; i<2; i++)
@@ -783,16 +770,7 @@ void main(void)
 			}
 		}
         // опрос по протоколу MODBUS RTU
-  
-		//Press ESC to terminate the program.
-		if(Kbhit() && Getch()=='q')
-		{
-			Nterm();
-            RestoreCom(2);
-			TimerClose(); 
-			return;
-		}
-       count_cikl++;
+        */
 	}
  
 }
