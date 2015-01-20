@@ -66,17 +66,17 @@ void checkSystem(void);
 void vibroToggle(unsigned char command);
 float getDozator(int NumDVL, int NumCom, int *status);
 int setDozator(int adrDevice, float newVal);
-void setIzvActivity(int index,float val);
-void setMV(int index,float val);
-void setPerfomance(int index, float val);
-void sendDataEth(int current_socket, int index); 
-void analizDataEth(char *buf,int len_buf, int current_socket);
+int setIzvActivity(unsigned char *buf, int index,float val);
+int setMV(unsigned char *buf,int index,float val);
+int setPerfomance(unsigned char *buf,int index, float val);
+int  sendDataEth(unsigned char *buf,int current_socket, int index); 
+void analizDataEth(unsigned char *buf,int len_buf, int current_socket);
 void netWork(int current_socket);
-void calculateWork(int index);
-void setAutomaticMode(int index);
-void setManualMode(int index);
-void setPerfomanceIzvest(int index, float val);
-void setPerfomanceSand(int index, float val);
+int calculateWork(unsigned char *buf,int index);
+int setAutomaticMode(unsigned char *buf,int index);
+int setManualMode(unsigned char *buf,int index);
+int setPerfomanceIzvest(unsigned char *buf,int index, float val);
+int setPerfomanceSand(unsigned char *buf,int index, float val);
 
 
 //Таймеры

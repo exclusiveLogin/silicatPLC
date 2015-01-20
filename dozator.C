@@ -11,13 +11,16 @@
 #define MaxClentSocket 32
 #define NUM_OF_SERVICE_PORT 2
 fd_set rfds,s_fds;    // server socket set of socket file descriptors for reading
+unsigned char musor[1000];
 unsigned       ActiveSkt[2]={0, 0};
 struct         timeval seltime={0,20};
 unsigned short service_port[NUM_OF_SERVICE_PORT]={10000, 502};
 int            socketPort[MaxClentSocket];
 unsigned int  count_cikl=0;
+
 int answer_to_modbus_tcp(char *bufer, int lenbuf);
 int status[10]={0,0,0,0,0,0,0,0,0,0};//статус запросов 
+unsigned char musor1[1000];
 float getDozator(int NumDVL, int NumCom, int *status);
 //Инициализация функций 
 /* ============== Расчёт контрольной суммы по алгоритму  CRC16 =====*/
@@ -170,8 +173,10 @@ static int stack=0;
  }	}
 }
 void checkSystem(){
- checkSystemNum(0);
- checkSystemNum(1);
+ static int index=0;
+ checkSystemNum(index);
+ index=1-index;
+// checkSystemNum(1);
 }
 //Управление вибратором-----------------------------------
 void vibroToggle(unsigned char command){
@@ -195,7 +200,10 @@ union
   //8 float sf;
    unsigned char byte[4];
   } ddata; 
-
+float ret=0.0;
+ret=NumDVL*10+NumCom;
+*status=0;
+return ret;
 switch (NumCom)
   {
    case 1: command[0]=NumDVL;//текущая производительность
@@ -282,13 +290,13 @@ if (lenans==kt) /* ответ пришёл правильный */
     }
    else
     {
-     Print("\r\nError of receive! Num bytes = %d must been = %d",kt,lenans);
+     Print("\r\nError of receive! Num bytes = %d must been = %d NumDVL(1)=%d",kt,lenans,NumDVL);
 	 *status = 1;
     }
   }
  else /* ответ не пришел */
   {
-   Print("\r\nError of receive! Num bytes = %d must been = %d",kt,lenans);
+   Print("\r\nError of receive! Num bytes = %d must been = %d NumDVL(1)=%d",kt,lenans,NumDVL);
    *status = 1;
   } 
 return -1;
@@ -380,48 +388,63 @@ if (kt>=lenans) /* ответ пришёл правильный */
 }
 
 //Установка активности извести----------------------------
-void setIzvActivity(int index, float val){
+int setIzvActivity(unsigned char *buf,int index, float val){
 	 curentIzvestActivity[index]=val;
+	 buf[0]='o';buf[1]='k';
+	 return 2;
 	 //Print("\r\n Set activity izvest: - %f",curentIzvestActivity);
 }
 //Установка молотовяжущего--------------------------------
-void setMV(int index, float val){
+int setMV(unsigned char *buf,int index, float val){
      curentMV[index]=val;
+	 buf[0]='o';buf[1]='k';
+	 return 2;
 	 //Print("\r\n Set MV:%f ",curentMV);
 }
 //Установка производительности----------------------------
-void setPerfomance(int index, float val){
+int setPerfomance(unsigned char *buf,int index, float val){
      neededPerfomanceSummary[index]=val;
      Print("\r\n Set Summary:%f ",neededPerfomanceSummary);
+	 buf[0]='o';buf[1]='k';
+	 return 2;
+
 }
 //Установка автоматичсеского режима----------------------------
-void setAutomaticMode(int index){
+int setAutomaticMode(unsigned char *buf,int index){
      workmode[index] = 0;
 	 Print("\r\n Set AUTOMATIC MODE");
+	 buf[0]='o';buf[1]='k';
+	 return 2;
 }
 //Установка ручного режима----------------------------
-void setManualMode(int index){
+int setManualMode(unsigned char *buf,int index){
      workmode[index] = 1;
 	 Print("\r\n Set MANUAL MODE");
+	 buf[0]='o';buf[1]='k';
+	 return 2;
 }
 //Установка производительности извести----------------------------
-void setPerfomanceIzvest(int index, float val){
+int setPerfomanceIzvest(unsigned char *buf,int index, float val){
 	 int error;
 	 error = setDozator(adrDoz[index*2], val);
      if(error==0)		statusDozator[index*2]=0;//записалось
 	 else				statusDozator[index*2]=2;//не записалось
 	 Print("\r\n Set perfomance IZVEST:%f ",val);
+	 buf[0]='o';buf[1]='k';
+	 return 2;
 }
 //Установка производительности песка----------------------------
-void setPerfomanceSand(int index, float val){
+int setPerfomanceSand(unsigned char *buf,int index, float val){
      int error;
 	 error = setDozator(adrDoz[index*2+1], val);
      if(error==0)		statusDozator[index*2+1]=0;//записалось
 	 else				statusDozator[index*2+1]=2;//не записалось
 	 Print("\r\n Set perfomance SAND:%f ",val);
+	 buf[0]='o';buf[1]='k';
+	 return 2;
 }
 //-------------Отправка данных на АРМ---------------------
-void sendDataEth(int current_socket, int index){
+int sendDataEth(unsigned char *buf,int current_socket, int index){
 int i;
 //Заглушка для отладки
 tmpbuf.tmpstruct.start[0]=1;
@@ -448,30 +471,33 @@ tmpbuf.tmpstruct.data[14]=setPerfSand[index];//Установленная производительность 
 
 
 
-//for(i=0;i<61;i++){
-//    Print("%d.",tmpbuf.buf[i]);
-//	} 
-send(current_socket, tmpbuf.buf, 65, 0);
+for(i=0;i<66;i++){  buf[i]=tmpbuf.buf[i]; 
+    Print("==%d.",tmpbuf.buf[i]);
+	} 
+ send(current_socket, buf, 66, 0);
+ return 66;
 }
 //-------------Анализ данных с АРМ---------------------
-void analizDataEth(char *buf,int len_buf, int current_socket){
+void analizDataEth(unsigned char *buf,int len_buf, int current_socket){
      int error=0;
 	 int i,n;
      int index=0;
+	 int len_answ=0;
+	 char buffer_send[1024];
 //Реальный буффер
-   //Print("Len=%d",len_buf);
-   //for (i=0;i<10;i++) Print("=%d=",buf[i]);
+   Print("Len=%d\r\n",len_buf);
+   for (i=0;i<11;i++) Print("=%d=",buf[i]);
    if (len_buf<6) return;
 	 for(i=0;i<len_buf-6;i++) //++?
       {
    	   if ((buf[i]==1)&&(buf[i+1]==1)&&(buf[i+2]==1)&&(buf[i+3]==1)&&(buf[i+4]==1)&&((buf[i+5]==0)||(buf[i+5]==1)))
         {
         index=buf[i+5];   
-		if ((i+11)<len_buf){
+		if (11<=len_buf){
 		   for(n=0;n<11;n++){
 		   		answertmpbuf.buf[n]=buf[i+n];
 		   		}
-           i=i+11;
+			break;
 		   }
          else error=1;
 		}
@@ -480,32 +506,36 @@ void analizDataEth(char *buf,int len_buf, int current_socket){
 	}	
 	//if (!error)		Print("not error\r\n");
 	//else            Print("error \r\n");
-	if (error){		   
+	if (error){	
+	   
           	   return;
 	   }
 	//Print("Simbol=%d\r\n",answertmpbuf.tmpstruct.i_command);
 	switch (answertmpbuf.tmpstruct.i_command){
-		case 105:setIzvActivity(index,answertmpbuf.tmpstruct.value);//i
+		case 105:len_answ=setIzvActivity(buffer_send,index,answertmpbuf.tmpstruct.value);//i
 			 //Print("\r\n activity recvd: %f",answertmpbuf.tmpstruct.value); 
 			 break;
-		case 114:sendDataEth(index,current_socket);//r 
+		case 114:len_answ=sendDataEth(buffer_send,current_socket,index);
+                 Print("\r\nREAD");//r 
              break;
-		case 109:setMV(index,answertmpbuf.tmpstruct.value);//m 
+		case 109:len_answ=setMV(buffer_send,index,answertmpbuf.tmpstruct.value);//m 
              break;
- 		case 112:setPerfomance(index,answertmpbuf.tmpstruct.value);//p 
+ 		case 112:len_answ=setPerfomance(buffer_send,index,answertmpbuf.tmpstruct.value);//p 
              break;
-		case 99:calculateWork(index);//c            
+		case 99:len_answ=calculateWork(buffer_send,index);//c            
              break;
-		case 97:setAutomaticMode(index);//a
+		case 97:len_answ=setAutomaticMode(buffer_send,index);//a
 			 break;
-		case 98:setManualMode(index);//b
+		case 98:len_answ=setManualMode(buffer_send,index);//b
 			 break;
-		case 101:setPerfomanceIzvest(index,answertmpbuf.tmpstruct.value);//e
+		case 101:len_answ=setPerfomanceIzvest(buffer_send,index,answertmpbuf.tmpstruct.value);//e
 			 break;
-		case 115:setPerfomanceSand(index,answertmpbuf.tmpstruct.value);//s
+		case 115:len_answ=setPerfomanceSand(buffer_send,index,answertmpbuf.tmpstruct.value);//s
 			 break;
         default  : error=1;break;
      } 
+    if (len_answ==0) { len_answ=3;buffer_send[0]='e';buffer_send[2]='r';buffer_send[3]='r'; }
+	send(current_socket,buffer_send,len_answ,0);
 }
 //-----------Обработчик сети TCP-IP-----------------------
 void netWork(int current_socket){
@@ -532,7 +562,7 @@ void netWork(int current_socket){
 //-------------Формирование задания для дозаторов---------------------
 //Актив. М-В(%)/Актив.Извести(%)*Производительность(т.ч)=Дозировка извести(т.ч)
 //Дозировка песка = Производительность - Дозировка извести (т.ч)
-void calculateWork(int index){
+int calculateWork(unsigned char *buf,int index){
 	 int error1, error2;
 	 if(curentIzvestActivity[index]==0) curentIzvestActivity[index]=1;
 	 calcPerfIzvest[index] = (curentMV[index]/curentIzvestActivity[index])*neededPerfomanceSummary[index];
@@ -553,6 +583,7 @@ void calculateWork(int index){
 	 else{
      	  statusDozator[index*2+1]=2; 
 	 }//__
+ buf[0]='o';buf[1]='k';return 2;
 }
 
 //-----------------------------------------------------------------------------
@@ -632,7 +663,7 @@ void main(void)
 	TimerOpen();
     InstallCom(2,19200L,8,0,1)    ;
 	Print("\r\n Ј 1: €­ЁжЁ «Ё§ жЁп TCP бҐаўҐа !");                  /* инициализация */
-	//err=NetStart();
+	err=NetStart();
 	if(err<0)
 	{
 		Print("\n\rЋиЁЎЄ  Ё­ЁжЁ «Ё§ жЁЁ TCP бҐаўҐа ");
@@ -679,27 +710,8 @@ void main(void)
 		 }       
 		// БЛОК ВИБРИРОВАНИЯ ПО ИЗВЕСТИ
 		vibroTmp = inportb(0);
-		Print("\r\nvibroTmp %d",vibroTmp);
-		/*switch(vibroTmp){
-		case 252:
-			 vibroLock1=1;
-			 vibroLock2=1;
-			 break;
-		case 253:
-			 vibroLock1=1;
-			 break;
-		case 254:
-			 vibroLock2=1;
-			 break;
-		case 255:
-			 vibroLock1=0;
-			 vibroLock2=0;
-			 break;
-		default:
-			 vibroLock1=1;
-			 vibroLock2=1;
-			 break;		
-		}      */
+		//Print("\r\nvibroTmp %d",vibroTmp);
+		
 		for (pc=0;pc<4;pc++) { timers_vibrat(pc);vibro[pc]=0; }
 /*		if (((sandBlocked1==1)&&(vibrocounter1==0))||(Act(0))) // залипание извести или не обработан таймер общего вибрирования
 		 {
@@ -772,11 +784,10 @@ void main(void)
 		if ((Act(3))&&(vibrocounter[1]%2==1)) { upr_code=upr_code+2;vibro[1]=1; }
 		if ((Act(5))&&(vibrocounter[2]%2==1)) { upr_code=upr_code+4;vibro[2]=1; }
 		if ((Act(7))&&(vibrocounter[3]%2==1)) { upr_code=upr_code+8;vibro[3]=1; }
-		if (vibro==1) Print("\r\nWKL %d",upr_code); 
+	//	if (vibro==1) Print("\r\nWKL %d",upr_code); 
         vibroToggle(upr_code);
 
 
-		/*----------------------------
 		YIELD();
 		//Step 3-1: Wait for activity on sockets and accept a connection
 		for(i=0; i<2; i++)
@@ -818,14 +829,14 @@ void main(void)
 				{
 					if(socketPort[i]==10000)
 					{
-						netWork(i);
+						Print("\r\n1");netWork(i);Print("\r\n2");
 					}
                    else Print("\r\nSendPort=%d",socketPort[i]); 
 				}
 			}
 		}
         // опрос по протоколу MODBUS RTU
-        */
+        
 	}
  
 }
