@@ -8,7 +8,7 @@ void main(void)
 [Project]
 ProjectName=Dozator.mpj
 Output=Dozator.exe
-UnitCount=2
+UnitCount=4
 [Unit1]
 FileName=dozator.C
 Compile=1
@@ -16,6 +16,16 @@ Link=1
 Filter=Source Files
 [Unit2]
 FileName=var.h
+Compile=0
+Link=0
+Filter=Header Files
+[Unit3]
+FileName=eeprom.c
+Compile=1
+Link=1
+Filter=Source Files
+[Unit4]
+FileName=vare.h
 Compile=0
 Link=0
 Filter=Header Files

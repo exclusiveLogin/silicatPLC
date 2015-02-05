@@ -1,7 +1,7 @@
 #define Run(NumTimer)       timers_time_run[NumTimer]=TimerReadValue();timers_action[NumTimer]=1;                                        // запуск таймера
 #define Act(NumTimer)       (((TimerReadValue()-timers_time_run[NumTimer])<timers_duration[NumTimer])&&(timers_action[NumTimer]==1))     // таймер активен
 #define Stop(NumTimer)      timers_action[NumTimer]=0;                                                                                   // Останов таймера
-
+#define CountUstavok 12
 union{	//ОТВЕТ НА АРМ
    		 unsigned char buf[66];
    		 struct{
@@ -87,3 +87,4 @@ int setPerfomanceSand(unsigned char *buf,int index, float val);
 unsigned char timers_action[8]; 
 unsigned long timers_duration[8];
 unsigned long timers_time_run[8];
+
